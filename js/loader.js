@@ -112,11 +112,22 @@
   document.addEventListener('ncc:hero-ready', heroDone);
   /** the globals text-reveal.js and hero-tree.js set */
   var globals = /** @type {{NCCText?: {ready?: Promise<void>}, __nccHeroReady?: boolean}} */ (/** @type {unknown} */ (window));
+  var waited = false, imgAsked = false;
   function afterScripts() {
+    // Round 11: on Webflow this file runs async, possibly before the deferred scripts (readyState 'interactive', no
+    // NCCText yet): wait for DOMContentLoaded once, which always follows them. Never wait twice, so a missing
+    // text-reveal.js still settles.
+    if (!globals.NCCText && !waited && document.readyState !== 'complete') {
+      waited = true;
+      document.addEventListener('DOMContentLoaded', afterScripts, { once: true });
+      window.addEventListener('load', afterScripts, { once: true });
+      return;
+    }
     var api = globals.NCCText;
     if (api && api.ready) api.ready.then(splitDone, splitDone); else splitDone();
     if (globals.__nccHeroReady) heroDone();
-    if (doc.classList.contains('no-gl')) {
+    if (doc.classList.contains('no-gl') && !imgAsked) {
+      imgAsked = true;
       // no WebGL: the hero shows a still frame; wait for that image (the same one the CSS picks)
       var img = new Image();
       img.onload = img.onerror = heroDone;
@@ -126,9 +137,10 @@
       img.src = loader.getAttribute(tall ? 'data-still-tall' : 'data-still-wide') || ('assets/img/' + (tall ? 'hero-tree-still-tall.png' : 'hero-tree-still-wide.png'));
     }
   }
-  // Deferred scripts run while readyState is already 'interactive' but before DOMContentLoaded, so wait for the event.
-  if (document.readyState === 'complete') afterScripts();
-  else document.addEventListener('DOMContentLoaded', afterScripts);
+  // Deferred scripts run while readyState is 'interactive', before DOMContentLoaded; an async run may come before or
+  // after them. afterScripts() sorts that out itself.
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', afterScripts);
+  else afterScripts();
 
   /* ---------- The symbol draws, center outward ---------- */
   var pieces = Array.prototype.slice.call(loader.querySelectorAll('.loader__piece'));
