@@ -1,0 +1,141 @@
+/* ==========================================================================
+   NCC motion stylesheet for the Webflow build (newazconsulting.com)
+   Section 1: token aliases. Written in Phase 1, Monday, November 9, 2026.
+
+   The Webflow Variables panel is the single source for the 90 design tokens below.
+   Webflow names each variable --_<collection>---<name>. These aliases give the
+   motion rules the same short names the hand-coded build used (--accent,
+   --fs-h3), so the rules port without a rename. Change a value in Webflow,
+   never here. Values are the plain-hex versions from the Vercel build.
+
+   The rest of this file (state classes, keyframes, masks, reduced motion)
+   arrives in Phase 0 of the plan.
+   ========================================================================== */
+
+:root {
+  /* Brand */
+  --c-ayanna: var(--_brand---c-ayanna);
+  --c-kaia: var(--_brand---c-kaia);
+  --c-saif: var(--_brand---c-saif);
+  --c-biscuit: var(--_brand---c-biscuit);
+  --c-night: var(--_brand---c-night);
+  --c-white: var(--_brand---c-white);
+  --cream: var(--_brand---cream);
+
+  /* Surface and ink */
+  --surface-base: var(--_surface-and-ink---surface-base);
+  --surface-raised: var(--_surface-and-ink---surface-raised);
+  --surface-feature: var(--_surface-and-ink---surface-feature);
+  --surface-cream: var(--_surface-and-ink---surface-cream);
+  --surface-deep: var(--_surface-and-ink---surface-deep);
+  --surface-card: var(--_surface-and-ink---surface-card);
+  --cream-deep: var(--_surface-and-ink---cream-deep);
+  --text-strong: var(--_surface-and-ink---text-strong);
+  --text-body: var(--_surface-and-ink---text-body);
+  --text-muted: var(--_surface-and-ink---text-muted);
+  --text-on-accent: var(--_surface-and-ink---text-on-accent);
+  --accent: var(--_surface-and-ink---accent);
+  --accent-cool: var(--_surface-and-ink---accent-cool);
+  --ink-strong: var(--_surface-and-ink---ink-strong);
+  --ink-body: var(--_surface-and-ink---ink-body);
+  --ink-line: var(--_surface-and-ink---ink-line);
+  --line: var(--_surface-and-ink---line);
+  --line-strong: var(--_surface-and-ink---line-strong);
+  --glow-soft: var(--_surface-and-ink---glow-soft);
+  --header-bg: var(--_surface-and-ink---header-bg);
+  --grove-ground: var(--_surface-and-ink---grove-ground);
+  --hero-sky: var(--_surface-and-ink---hero-sky);
+  --hero-earth: var(--_surface-and-ink---hero-earth);
+  --signal-stop: var(--_surface-and-ink---signal-stop);
+  --symbol-muted: var(--_surface-and-ink---symbol-muted);
+  --tint-white-60: var(--_surface-and-ink---tint-white-60);
+  --tint-saif-0: var(--_surface-and-ink---tint-saif-0);
+  --tint-saif-35: var(--_surface-and-ink---tint-saif-35);
+  --tint-saif-55: var(--_surface-and-ink---tint-saif-55);
+  --tint-saif-70: var(--_surface-and-ink---tint-saif-70);
+  --tint-biscuit-22: var(--_surface-and-ink---tint-biscuit-22);
+  --tint-biscuit-60: var(--_surface-and-ink---tint-biscuit-60);
+
+  /* Type */
+  --font-display: var(--_type---font-display);
+  --font-body: var(--_type---font-body);
+  --fs-display: var(--_type---fs-display);
+  --fs-h2: var(--_type---fs-h2);
+  --fs-h3: var(--_type---fs-h3);
+  --fs-h3-lg: var(--_type---fs-h3-lg);
+  --fs-name: var(--_type---fs-name);
+  --fs-lead: var(--_type---fs-lead);
+  --fs-body-lg: var(--_type---fs-body-lg);
+  --fs-body: var(--_type---fs-body);
+  --fs-small: var(--_type---fs-small);
+  --fs-label: var(--_type---fs-label);
+  --fs-display-xl: var(--_type---fs-display-xl);
+  --fs-verb: var(--_type---fs-verb);
+  --lh-display: var(--_type---lh-display);
+  --lh-h2: var(--_type---lh-h2);
+  --lh-h3: var(--_type---lh-h3);
+  --lh-lead: var(--_type---lh-lead);
+  --lh-body: var(--_type---lh-body);
+  --lh-small: var(--_type---lh-small);
+  --lh-label: var(--_type---lh-label);
+  --lh-verb: var(--_type---lh-verb);
+  --tr-display: var(--_type---tr-display);
+  --tr-h2: var(--_type---tr-h2);
+  --tr-h3: var(--_type---tr-h3);
+  --tr-small: var(--_type---tr-small);
+  --tr-label: var(--_type---tr-label);
+  --tr-verb: var(--_type---tr-verb);
+
+  /* Space and layout */
+  --space-1: var(--_space-and-layout---space-1);
+  --space-2: var(--_space-and-layout---space-2);
+  --space-3: var(--_space-and-layout---space-3);
+  --space-4: var(--_space-and-layout---space-4);
+  --space-5: var(--_space-and-layout---space-5);
+  --space-6: var(--_space-and-layout---space-6);
+  --space-7: var(--_space-and-layout---space-7);
+  --space-8: var(--_space-and-layout---space-8);
+  --space-9: var(--_space-and-layout---space-9);
+  --section-y: var(--_space-and-layout---section-y);
+  --head-gap: var(--_space-and-layout---head-gap);
+  --gutter: var(--_space-and-layout---gutter);
+  --container: var(--_space-and-layout---container);
+  --col-gap: var(--_space-and-layout---col-gap);
+  --measure: var(--_space-and-layout---measure);
+  --measure-voice: var(--_space-and-layout---measure-voice);
+  --header-h: var(--_space-and-layout---header-h);
+  --radius-pill: var(--_space-and-layout---radius-pill);
+  --radius-panel: var(--_space-and-layout---radius-panel);
+  --radius-tile: var(--_space-and-layout---radius-tile);
+  --radius-card: var(--_space-and-layout---radius-card);
+  --card-inset: var(--_space-and-layout---card-inset);
+  --hairline: var(--_space-and-layout---hairline);
+
+  /* Composite tokens Webflow has no variable type for, built on the aliases above */
+  --focus-ring: 2px solid var(--c-biscuit);
+  --focus-ring-cream: 2px solid var(--c-ayanna);
+
+  /* Motion: one vocabulary. Webflow has no duration or easing variable type, so these live here. */
+  --ease-out: cubic-bezier(0.22, 0.8, 0.24, 1);
+  --ease-organic: cubic-bezier(0.3, 0.7, 0.1, 1);
+  --ease-settle: cubic-bezier(0.45, 0, 0.2, 1);
+  --dur-reveal: 560ms;
+  --stagger: 70ms;
+  --rise: 0.75rem;
+  --ease-reveal: cubic-bezier(0.55, 0, 0.1, 1);
+  --dur-line: 1200ms;
+  --stagger-line: 95ms;
+  --stagger-char: 38ms;
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-lockup-piece: 820ms;
+  --ease-sweep: cubic-bezier(0.37, 0, 0.63, 1);
+  --dur-caret-blink: 1060ms;
+  --dur-loader-piece: 520ms;
+  --dur-loader-lift: 760ms;
+  --loader-lift-delay: 120ms;
+}
+
+/* Open in Phase 2: the hand-coded build drops --header-h to 4rem below 40em.
+   With Webflow's breakpoints (Shai, November 9) that step moves to 767px.
+   Set it then as a Space and layout variable mode on the small breakpoint,
+   or as a rule here; decide when the header is built. */
