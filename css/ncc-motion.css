@@ -548,7 +548,15 @@ html:not(.js) .hero__stage,
 }
 .approach.is-pinned .step.is-active .step__num { opacity: 1; transform: none; transition-delay: 120ms; }
 .approach.is-pinned .step.is-past .step__num { transform: translate3d(0, -1.5rem, 0); }
-.approach.is-pinned .step__verb { filter: drop-shadow(0 0 0.3em var(--tint-biscuit-22)); }
+.approach.is-pinned .step__verb {
+  /* the soft glow as a filter on the whole word: a text-shadow is clipped by each letter's mask into boxes */
+  filter: drop-shadow(0 0 0.3em var(--tint-biscuit-22));
+  /* Round 10: WebKit sizes the filter's region from what the word paints, and the split letters paint a slightly
+     different area than the settled word, so the glow and the word moved by a device pixel as the reveal ended. A box
+     larger than either (padding, given back by the margin, so nothing moves) keeps the region the same in both. */
+  padding: 0.5em;
+  margin: -0.5em;
+}
 .approach.is-pinned .step__rest { margin-top: clamp(1rem, 3vh, 2rem); }
 .approach.is-pinned .step.is-past .tr-li,
 .approach.is-pinned .step.is-past .tr-c { transform: translate3d(0, -115%, 0); opacity: 0; transition-delay: 0ms; transition-duration: 700ms; }
