@@ -16,6 +16,31 @@
   function clamp(v, a, b) { return Math.min(Math.max(v, a), b); }
   function easeInOut(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
+  /* Round 11 (Shai: the live site "loads very slowly"; Lighthouse mobile: main.js 1.3 s of start-up work). The heavy
+     set-ups below the fold (the clarity haze, Tami's signature plan) wait until the loader has released the page, then
+     run when the browser is idle or when their element comes within one screen of view, whichever is first. Until then
+     each shows its finished, no-JS state, and both are set up well before they can be seen. */
+  function afterLoad(fn) {
+    if (doc.classList.contains('is-loading')) document.addEventListener('ncc:loaded', fn, { once: true });
+    else fn();
+  }
+  function idle(fn) {
+    if (window.requestIdleCallback) window.requestIdleCallback(fn, { timeout: 3000 });
+    else window.setTimeout(fn, 300);
+  }
+  function later(el, fn) {
+    if (!el) return;
+    var done = false, io = null;
+    function go() { if (done) return; done = true; if (io) io.disconnect(); fn(); }
+    afterLoad(function () {
+      if (hasIO) {
+        io = new IntersectionObserver(function (es) { if (es.some(function (e) { return e.isIntersecting; })) go(); }, { rootMargin: '100% 0px' });
+        io.observe(el);
+      }
+      idle(go);
+    });
+  }
+
   /* ---------- Schedule buttons ---------- */
   function initSchedule() {
     $$('[data-schedule]').forEach(function (a) {
@@ -250,6 +275,8 @@
     var ctx = canvas.getContext('2d');
     var eraser = document.createElement('canvas');
     var ectx = eraser.getContext('2d');
+    // round 11: no 2D context (iOS canvas memory): the word stays clear, as without JS
+    if (!ctx || !ectx) { root.classList.add('is-clear'); return; }
     var css = getComputedStyle(doc);
     var fog = getComputedStyle(root).getPropertyValue('--clarity-fog').trim() || css.getPropertyValue('--c-night').trim();
     var palette = [
@@ -288,7 +315,8 @@
       if (oldW && oldH) {
         keep = document.createElement('canvas');
         keep.width = oldW; keep.height = oldH;
-        keep.getContext('2d').drawImage(eraser, 0, 0);
+        var kctx = keep.getContext('2d');
+        if (kctx) kctx.drawImage(eraser, 0, 0); else keep = null;
       }
       eraser.width = W;
       eraser.height = H;
@@ -740,26 +768,6 @@
     if (debug) Object.assign(window, { __nccPhase: { seek: function (ms) { pio.unobserve(phases); arm(); var steps = 24; for (var i = 0; i <= steps; i++) { var k = clamp(ms / LINE * i / steps, 0, 1); setDraw(0.5 - 0.5 * Math.cos(Math.PI * k), true); } }, LINE: LINE } });
   }
 
-  /* ---------- Header: now and then, a light sweeps across the symbol ----------
-     Round 7; round 9: a sweep of the brand yellow about every 5 s (4.5 to 5.5 s, a new random wait each time), the shine
-     layer running its CSS sweep once. Skipped while the tab is hidden. Reduced motion: never (the layer is also hidden
-     in CSS). */
-  function initShimmer() {
-    var el = $('[data-shine]');
-    if (!el || reduceMotion) return;
-    function next() { window.setTimeout(run, 4500 + Math.random() * 1000); }
-    function run() {
-      if (!document.hidden) {
-        el.classList.remove('is-shining');
-        void el.offsetWidth; // restart the animation
-        el.classList.add('is-shining');
-      }
-      next();
-    }
-    el.addEventListener('animationend', function () { el.classList.remove('is-shining'); });
-    next();
-  }
-
   /* ---------- Meet Tami: she signs the page ----------
      Round 7. When the signature is well in view, it is written stroke by stroke, in writing order: the T, "ami",
      the two strokes of the N and "ewaz", then the loop, a little quicker, as one flourish, then the dot of the i.
@@ -1035,12 +1043,11 @@
     initNav();
     initReveal();
     initRowMarks();
-    initClarity();
+    later($('[data-clarity]'), initClarity);
     initStripIcons();
     initHeaderMoon();
     initExperience();
-    initShimmer();
-    initSignature();
+    later($('[data-signature]'), initSignature);
     initLockup();
     initWallpaper();
     initReplay();

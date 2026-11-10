@@ -538,7 +538,12 @@ function heroReady() {
   document.dispatchEvent(new CustomEvent('ncc:hero-ready'));
 }
 
-function boot() {
+/* Round 11 (Lighthouse mobile: hero-tree.js was one 0.8 s task at start-up): boot hands the main thread back twice,
+   after the renderer is set up and after the first tree is grown, so the loader keeps drawing and the browser can
+   paint in between. Nothing is shown before the first frame, as before. */
+const yieldTask = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+async function boot() {
   if (!hero || !stage || !copy) { heroReady(); return; }
 
   const C = {
@@ -622,7 +627,9 @@ function boot() {
     variants.push({ v, tree: ribbonGeometry(v.tree), roots: ribbonGeometry(v.roots), leaves: leafGeometry(v) });
   }
   const seeds = [20261109, 731, 4417];
+  await yieldTask();
   addVariant(seeds[0]);
+  await yieldTask();
   const seedGeo = seedGeometry();
   const quad = quadGeometry();
 
@@ -942,4 +949,4 @@ function hasWebGL() {
 }
 
 if (root.classList.contains('no-gl') || !hasWebGL()) fail(new Error('WebGL is not available'));
-else { try { boot(); } catch (err) { fail(err); } }
+else boot().catch(fail);

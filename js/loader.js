@@ -13,7 +13,7 @@
    (CSS) and the hero tree starts its clock, so the first seed drops in view, never behind the loader.
 
    The head script decides (html.has-loader: JS on, no reduced motion, first visit this session, or ?loader) and holds a
-   4.5 s failsafe that frees the page even if this file never runs. Without JS the loader is display: none.
+   6 s failsafe (round 11; was 4.5 s) that frees the page even if this file never runs. Without JS the loader is display: none.
    Accessibility: while it is up, everything else in the body is inert (no focus, no clicks) and wheel, touch and key
    scrolling are held, so the visitor cannot land mid-page under it. Vera fixes: the loader is role="status" with
    visually hidden text, "Loading Newaz Clinical Consulting" (its drawing is aria-hidden), <main> is aria-busy, and both
@@ -34,8 +34,9 @@
   var FREE_PIECES = 4;       // pieces that draw on time alone; the other six wait for readiness
   var HOLD_MS = 120;         // the finished symbol rests this long before it leaves
   var MIN_MS = 800;          // never leave before this (ms from navigation start)
-  var FORCE_DRAW_MS = 2400;  // draw whatever is left from here on
-  var MAX_MS = 3000;         // start to leave by here, ready or not
+  var FORCE_DRAW_MS = 3800;  // draw whatever is left from here on, still one piece per STEP_MS, done by MAX_MS
+  var MAX_MS = 5000;         // start to leave by here, ready or not. Round 11 (Shai: "shouldn't the loader wait till the
+                             // site is fully loaded?"): was 3000, which let a slow phone see the page half built
   var RELEASE_AT = 0.35;     // fraction of the lift when the hero starts (the lift is front-loaded: most of the ground is gone)
 
   /** @param {string} name @param {number} fallback */
@@ -53,14 +54,25 @@
   function mark(k) { if (!(k in marks)) marks[k] = Math.round(performance.now()); }
   if (/[?&]loader-debug\b/.test(location.search)) Object.assign(window, { __nccLoader: marks });
 
-  /* ---------- Hold the page underneath ---------- */
+  /* ---------- Hold the page underneath ----------
+     Round 11 (Vera WF-1): on Webflow this file runs async from inside the Loader, before the rest of the body is
+     parsed, so the symbol starts drawing at once. The page under it is held as soon as it exists (DOMContentLoaded),
+     and never after the release. */
   /** @type {HTMLElement[]} */
-  var held = Array.prototype.filter.call(document.body.children, function (/** @type {Element} */ n) {
-    return n !== loader && n.tagName !== 'SCRIPT';
-  });
-  held.forEach(function (n) { n.setAttribute('inert', ''); });
-  var main = document.getElementById('main');
-  if (main) main.setAttribute('aria-busy', 'true');
+  var held = [];
+  /** @type {HTMLElement | null} */
+  var main = null;
+  var released = false;
+  function hold() {
+    if (released) return;
+    held = Array.prototype.filter.call(document.body.children, function (/** @type {Element} */ n) {
+      return n !== loader && n.tagName !== 'SCRIPT' && n.tagName !== 'STYLE' && n.tagName !== 'LINK';
+    });
+    held.forEach(function (n) { n.setAttribute('inert', ''); });
+    main = document.getElementById('main');
+    if (main) main.setAttribute('aria-busy', 'true');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hold); else hold();
   var status = loader.querySelector('[data-loader-status]');
   var noInert = !('inert' in HTMLElement.prototype);
   var SCROLL_KEYS = { ' ': 1, PageDown: 1, PageUp: 1, Home: 1, End: 1, ArrowDown: 1, ArrowUp: 1, ArrowLeft: 1, ArrowRight: 1 };
@@ -140,10 +152,10 @@
   function tick() {
     if (leaving) return;
     var now = performance.now();
-    var byTime = Math.floor((now - drawStart) / STEP_MS) + 1;
     var allowed = now >= FORCE_DRAW_MS ? order.length : FREE_PIECES + Math.round((order.length - FREE_PIECES) * done / tasks);
-    var n = Math.min(order.length, byTime, allowed);
-    while (drawn < n) {
+    var n = Math.min(order.length, allowed);
+    // round 11 (Vera WF-1): never more than one new piece per STEP_MS, so a late draw is never rushed
+    if (drawn < n && (drawn === 0 || now - lastStart >= STEP_MS)) {
       var m = loader.querySelector('#ld-m' + order[drawn].i);
       if (m) m.classList.add('is-drawn');
       lastStart = now;
@@ -156,6 +168,7 @@
 
   /* ---------- Leave, then hand over to the hero ---------- */
   function release() {
+    released = true;
     mark('release');
     held.forEach(function (n) { n.removeAttribute('inert'); });
     if (main) main.removeAttribute('aria-busy');

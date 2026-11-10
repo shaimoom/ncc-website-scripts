@@ -278,11 +278,34 @@ function hasWebGL() {
   return ok;
 }
 
+/* Round 11 (Lighthouse mobile: this boot was 0.6 s of one long task at start-up, for a section far below the fold).
+   The layout classes are set now, so nothing on the page moves later; the renderer, the plant and the scroll scrub
+   are built once the loader has released the page, when the browser is idle or the section comes within one screen
+   of view, whichever is first. */
 if (section && !root.classList.contains('no-gl') && hasWebGL()) {
-  try { boot(section); } catch (err) {
-    section.classList.remove('is-pinned', 'is-still');
-    console.warn('How We Work Together: falling back to the plain steps.', err);
-  }
+  const sec = section;
+  const list = sec.querySelector('[data-steps]');
+  sec.classList.add(reduce ? 'is-still' : 'is-pinned');
+  if (!reduce && list) list.setAttribute('data-reveal-owner', '');
+  const go = () => {
+    try { boot(sec); } catch (err) {
+      sec.classList.remove('is-pinned', 'is-still');
+      if (list) list.removeAttribute('data-reveal-owner');
+      console.warn('How We Work Together: falling back to the plain steps.', err);
+    }
+  };
+  let done = false;
+  /** @type {IntersectionObserver | null} */
+  let near = null;
+  const once = () => { if (done) return; done = true; if (near) near.disconnect(); go(); };
+  const arm = () => {
+    if ('IntersectionObserver' in window) {
+      near = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) once(); }, { rootMargin: '100% 0px' });
+      near.observe(sec);
+    }
+    if (window.requestIdleCallback) window.requestIdleCallback(once, { timeout: 3000 }); else setTimeout(once, 300);
+  };
+  if (root.classList.contains('is-loading')) document.addEventListener('ncc:loaded', arm, { once: true }); else arm();
 }
 
 /** @param {HTMLElement} sec */
@@ -298,8 +321,7 @@ function boot(sec) {
   const still = reduce;
   const small = () => window.innerWidth < 960;
 
-  sec.classList.add(still ? 'is-still' : 'is-pinned');
-  if (!still) list.setAttribute('data-reveal-owner', '');
+  // round 11: the classes and the reveal owner are set before boot (see above)
 
   /* renderer */
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });

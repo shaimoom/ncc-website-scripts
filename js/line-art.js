@@ -12,7 +12,15 @@
 
    A stage draws only while it is on screen and the tab is visible, and starts its clock
    when it becomes active. Under reduced motion each stage draws one still, final frame.
-   ?art-debug exposes window.__nccArt.seek(name, seconds) for filmstrips. */
+   ?art-debug exposes window.__nccArt.seek(name, seconds) for filmstrips.
+
+   Round 11 (Shai's iPhone: "the solution illustrations are still not loading"; his screenshot showed no card at all):
+   the card's height no longer depends on aspect-ratio (a .journey__sizer gives it, see the CSS). Here, each panel is
+   hardened so its area is never blank: a panel that cannot start (no 2D context, an error while drawing, a canvas
+   with no size) draws its final still frame, or, when even that fails, shows the still image in the card
+   (.journey__still, not displayed while the canvas draws). Sizes come from the element box (not transformed rects), the
+   backing store is capped at DPR 2 and 4 megapixels, no newer canvas API is required (getTransform is optional), and
+   a scroll check backs up the IntersectionObserver start. */
 // @ts-check
 (function () {
   'use strict';
@@ -27,6 +35,7 @@
    * @property {number} ox    design origin, CSS px
    * @property {number} oy
    * @property {boolean} still  reduced motion: draw the final frame
+   * @property {number[]} m     the drawing transform (a, b, c, d, e, f), device px, for offscreen layers
    * @typedef {Object} Scene
    * @property {[number, number] | null} design   design space; null means CSS px
    * @property {number} stillAt                   the time drawn under reduced motion
@@ -198,13 +207,14 @@
   }
 
   /* ---------- Drawing primitives, the shared look ---------- */
-  /** @type {Record<string, HTMLCanvasElement>} */
+  /** @type {Record<string, HTMLCanvasElement | null>} */
   var sprites = {};
   /** one soft bloom per color, the canvas twin of the hero's bloom @param {string} color */
   function sprite(color) {
-    if (sprites[color]) return sprites[color];
+    if (color in sprites) return sprites[color];
     var c = document.createElement('canvas'); c.width = c.height = 96;
-    var g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+    var g = c.getContext('2d');
+    if (!g) return null;
     var v = rgb(color.charAt(0) === '#' ? color : '#ffffff'), s = v.join(',');
     var gr = g.createRadialGradient(48, 48, 0, 48, 48, 48);
     gr.addColorStop(0, 'rgba(' + s + ',1)');
@@ -219,9 +229,11 @@
   /** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} r design units @param {string} color @param {number} a */
   function glow(ctx, x, y, r, color, a) {
     if (a <= 0.003 || r <= 0) return;
+    var img = sprite(color);
+    if (!img) return;
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = Math.min(a, 1);
-    ctx.drawImage(sprite(color), x - r, y - r, r * 2, r * 2);
+    ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
@@ -275,15 +287,18 @@
     ctx.globalAlpha = 1;
   }
 
-  /** Round 7: an offscreen layer the size of ctx's canvas, cleared, with ctx's transform, one per canvas.
+  /** Round 7: an offscreen layer the size of ctx's canvas, cleared, with the view's drawing transform, one per canvas.
+      Round 11: the transform comes from the view (v.m), not ctx.getTransform(), which older Safari lacks.
+      Null when the browser will not give another 2D context (iOS canvas memory): the caller draws without the layer.
       @type {WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>} */
   var layers = new WeakMap();
-  /** @param {CanvasRenderingContext2D} ctx @returns {CanvasRenderingContext2D} */
-  function layer(ctx) {
+  /** @param {CanvasRenderingContext2D} ctx @param {View} v @returns {CanvasRenderingContext2D | null} */
+  function layer(ctx, v) {
     var lc = layers.get(ctx.canvas);
     if (!lc) {
-      var c = document.createElement('canvas');
-      lc = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+      var lctx = document.createElement('canvas').getContext('2d');
+      if (!lctx) return null;
+      lc = lctx;
       layers.set(ctx.canvas, lc);
     }
     if (lc.canvas.width !== ctx.canvas.width || lc.canvas.height !== ctx.canvas.height) {
@@ -292,7 +307,7 @@
     lc.setTransform(1, 0, 0, 1, 0, 0);
     lc.globalAlpha = 1; lc.globalCompositeOperation = 'source-over';
     lc.clearRect(0, 0, lc.canvas.width, lc.canvas.height);
-    lc.setTransform(ctx.getTransform());
+    lc.setTransform(v.m[0], v.m[1], v.m[2], v.m[3], v.m[4], v.m[5]);
     return lc;
   }
   /** Fade a layer out toward the rim of an ellipse: solid in the middle, gone at the rim (design units).
@@ -426,7 +441,8 @@
         // rectangular clip. The creases, the grid and the contours are drawn on their own layer, which fades out
         // toward the map's edges in a soft ellipse, so the map dissolves into the card instead of ending in a frame.
         var settle = seg(t, T.dropAt + T.dropDur, 0.4);
-        var lc = layer(ctx);
+        // round 11: without a layer (no second context), the open map draws straight onto the card, unfaded
+        var lc = layer(ctx, v) || ctx;
         stroke(lc, v, function (c) {
           for (var j = 1; j < COLS; j++) { c.moveTo(X0 + PW * j, Y0); c.lineTo(X0 + PW * j, Y0 + MH); }
           c.moveTo(X0, Y0 + PH); c.lineTo(X0 + MW, Y0 + PH);
@@ -441,12 +457,14 @@
           if (c0 <= 0) return;
           stroke(lc, v, function (c) { p.trace(c, 0, p.len * c0); }, C.sky, 0.26 + (i % 4 === 0 ? 0.08 : 0), HAIR);
         });
-        vignette(lc, cx, cy, MW * 0.56, MH * 0.6);
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.globalAlpha = 1;
-        ctx.drawImage(lc.canvas, 0, 0);
-        ctx.restore();
+        if (lc !== ctx) {
+          vignette(lc, cx, cy, MW * 0.56, MH * 0.6);
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.globalAlpha = 1;
+          ctx.drawImage(lc.canvas, 0, 0);
+          ctx.restore();
+        }
 
         // ---- A, the route, B ----
         var aIn = E.organic(seg(t, T.aAt, 0.6));
@@ -748,91 +766,180 @@
   }
 
   /* ---------- A stage: sizing, the clock, visibility, reduced motion ---------- */
-  /** @type {Record<string, {seek: (t: number) => void, frames: () => number}>} */
+  var MAX_DPR = 2;          // iOS caps canvas area and total canvas memory; DPR 3 buys nothing on a line drawing
+  var MAX_PIXELS = 4e6;     // backing store cap per canvas (2000 x 2000)
+  /** @type {Record<string, {seek: (t: number) => void, frames: () => number, state: () => string}>} */
   var registry = {};
+  /** Round 11: the card's still image, shown when the canvas cannot draw. @param {HTMLCanvasElement} canvas @param {boolean} on */
+  function showStill(canvas, on) {
+    var panel = canvas.parentElement;
+    if (panel) panel.classList.toggle('is-fallback', on);
+    var img = panel && panel.querySelector('.journey__still');
+    if (img) /** @type {HTMLElement} */ (img).style.display = on ? 'block' : 'none';
+  }
   /**
    * @param {HTMLCanvasElement} canvas
    * @param {Scene} scene
    * @param {{name: string, activeAt?: number, trigger?: Element | null, triggerAt?: number}} opts
    */
   function stage(canvas, scene, opts) {
-    var ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
-    if (!ctx) return;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) { showStill(canvas, true); registry[opts.name] = dead('no-context'); return; }
+    var g = ctx;
     /** @type {View} */
-    var v = { W: 0, H: 0, s: 1, ox: 0, oy: 0, still: reduce };
+    var v = { W: 0, H: 0, s: 1, ox: 0, oy: 0, still: reduce, m: [1, 0, 0, 1, 0, 0] };
     var dpr = 1, t = 0, last = 0, raf = 0, frames = 0;
-    var visible = false, started = false, paused = false;
+    var visible = false, started = false, paused = false, broken = '';
+    // the canvas draws now: its still image stays in the card, hidden, for a later failure
+    showStill(canvas, false);
 
+    /** the element's own layout box: unaffected by transforms, and the card's box when the canvas reads 0 */
+    function box() {
+      var w = canvas.clientWidth, h = canvas.clientHeight;
+      if (!w || !h) { var p = canvas.parentElement; if (p) { w = w || p.clientWidth; h = h || p.clientHeight || w; } }
+      return { w: w, h: h };
+    }
     function fit() {
-      var r = canvas.getBoundingClientRect();
-      v.W = Math.max(1, r.width); v.H = Math.max(1, r.height);
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(v.W * dpr); canvas.height = Math.round(v.H * dpr);
+      var b = box();
+      if (!b.w || !b.h) return;   // not laid out yet (hidden, collapsed): the observers call again once it is
+      dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+      if (b.w * b.h * dpr * dpr > MAX_PIXELS) dpr = Math.sqrt(MAX_PIXELS / (b.w * b.h));
+      var cw = Math.max(1, Math.round(b.w * dpr)), ch = Math.max(1, Math.round(b.h * dpr));
+      if (canvas.width !== cw) canvas.width = cw;
+      if (canvas.height !== ch) canvas.height = ch;
+      v.W = b.w; v.H = b.h;
       if (scene.design) {
         var dw = scene.design[0], dh = scene.design[1];
         v.s = Math.min(v.W / dw, v.H / dh);
         v.ox = (v.W - dw * v.s) / 2; v.oy = (v.H - dh * v.s) / 2;
       } else { v.s = 1; v.ox = 0; v.oy = 0; }
+      v.m = [dpr * v.s, 0, 0, dpr * v.s, dpr * v.ox, dpr * v.oy];
       if (scene.layout) scene.layout(v);
       paint();
     }
+    /** @param {number} [at] */
+    function draw(at) {
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, v.W, v.H);
+      g.setTransform(v.m[0], v.m[1], v.m[2], v.m[3], v.m[4], v.m[5]);
+      g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      scene.draw(g, at == null ? t : at, v);
+      g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    }
     function paint() {
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, v.W, v.H);
-      if (!started && !v.still) return;
-      ctx.setTransform(dpr * v.s, 0, 0, dpr * v.s, dpr * v.ox, dpr * v.oy);
-      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-      scene.draw(ctx, v.still ? scene.stillAt : t, v);
-      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      if (!v.W) return;
+      if (broken) { still(); return; }
+      try {
+        if (!started && !v.still) { g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, v.W, v.H); return; }
+        draw(v.still ? scene.stillAt : t);
+      } catch (err) { fail('draw: ' + (err && err.message)); }
+    }
+    /** a panel that cannot animate: its final still frame on the canvas, else the still image @param {string} why */
+    function fail(why) {
+      if (broken) return;
+      broken = why;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      still();
+      if (window.console) console.warn('[line-art] ' + opts.name + ': ' + why);
+    }
+    /** the final still frame, as under reduced motion; the still image when the canvas cannot draw it */
+    function still() {
+      if (!v.W) { showStill(canvas, true); return; }
+      var wasStill = v.still;
+      v.still = true;
+      try { draw(scene.stillAt); } catch (e) { showStill(canvas, true); }
+      v.still = wasStill;
     }
     /** @param {number} now */
     function loop(now) {
       raf = 0;
       if (!running()) return;
-      t += Math.min((now - last) / 1000, 0.05);
+      t += Math.max(0, Math.min((now - last) / 1000, 0.05));
       last = now;
       paint();
       frames++;
-      raf = requestAnimationFrame(loop);
+      if (!broken) raf = requestAnimationFrame(loop);
     }
-    function running() { return visible && started && !paused && !v.still && !document.hidden; }
+    function running() { return !broken && visible && started && !paused && !v.still && !document.hidden; }
     function sync() {
       if (running() && !raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
       else if (!running() && raf) { cancelAnimationFrame(raf); raf = 0; }
     }
-    function start() { if (started) return; started = true; if (v.still) paint(); sync(); }
+    function start() {
+      if (started) return;
+      started = true;
+      if (!v.W) fit();
+      if (!v.W) { fail('no size'); return; }
+      if (v.still) paint();
+      sync();
+      // a frame clock that never ticks (a throttled or stalled page): settle on the still frame instead of a blank card
+      var f0 = frames;
+      window.setTimeout(function () { if (started && running() && frames === f0) fail('no frames'); }, 2500);
+    }
 
-    if ('ResizeObserver' in window) new ResizeObserver(function () { fit(); }).observe(canvas);
-    else window.addEventListener('resize', fit, { passive: true });
+    if ('ResizeObserver' in window) {
+      try { new ResizeObserver(function () { fit(); }).observe(canvas); } catch (e) { window.addEventListener('resize', fit, { passive: true }); }
+    } else window.addEventListener('resize', fit, { passive: true });
+    window.addEventListener('orientationchange', fit);
     fit();
+
+    var trig = opts.trigger || canvas;
+    var at = opts.triggerAt != null ? opts.triggerAt : (opts.activeAt || 0.45);
+    /** @param {Element} el @param {number} need share of el in view, or el already scrolled past */
+    function shown(el, need) {
+      var r = el.getBoundingClientRect(), vh = window.innerHeight || document.documentElement.clientHeight;
+      if (r.bottom < 0) return true;
+      if (!r.height) return false;
+      return (Math.min(r.bottom, vh) - Math.max(r.top, 0)) / r.height >= need - 0.02;
+    }
+    /** the start condition: the trigger far enough in view, or scrolled past. Round 11: a panel with its own trigger
+        (the first one, on the intro's last line) also starts once the card itself is 45% in view; on a tall phone the
+        intro can sit partly above the screen while the card is in full view, and the card stayed blank. */
+    function due() { return shown(trig, at) || (trig !== canvas && shown(canvas, 0.45)); }
+    function inView() { var r = canvas.getBoundingClientRect(); return r.bottom > 0 && r.top < (window.innerHeight || 0) && r.height > 0; }
+    // round 11: a scroll check backs up the observers (an observer that never reports leaves the card blank)
+    var pend = 0;
+    function check() {
+      pend = 0;
+      if (!visible && inView()) { visible = true; sync(); }
+      if (!started && due()) start();
+      if (started) window.removeEventListener('scroll', onScroll);
+    }
+    // a timer, not a frame: this backup must work when frames do not
+    function onScroll() { if (!pend) pend = window.setTimeout(check, 90); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+
     if ('IntersectionObserver' in window) {
-      new IntersectionObserver(function (es) { visible = es[0].isIntersecting; sync(); }, { threshold: 0 }).observe(canvas);
-      var trig = opts.trigger || canvas;
-      var at = opts.triggerAt != null ? opts.triggerAt : (opts.activeAt || 0.45);
-      var tio = new IntersectionObserver(function (es) {
-        var e = es[0];
-        // in view far enough, or already scrolled past (a jump link, a fast fling)
-        if ((e.isIntersecting && e.intersectionRatio >= at - 0.02) || e.boundingClientRect.bottom < 0) { tio.unobserve(trig); start(); }
-      }, { threshold: [0, at - 0.02, at] });
-      tio.observe(trig);
+      new IntersectionObserver(function (es) { visible = es[es.length - 1].isIntersecting; sync(); }, { threshold: 0 }).observe(canvas);
+      // in view far enough, or already scrolled past (a jump link, a fast fling); due() reads the geometry itself
+      var tio = new IntersectionObserver(function () {
+        if (due()) { tio.disconnect(); start(); }
+      }, { threshold: [0, 0.43, 0.45, at - 0.02, at] });
+      var watch = function () { tio.observe(trig); if (trig !== canvas) tio.observe(canvas); };
+      watch();
       // round 8, replay: once the section is out of view below (main.js), the intro waits to play again from its start;
       // the idle loop that follows it is unchanged
       var scope = canvas.closest('section');
       if (scope && !v.still) scope.addEventListener('ncc:reset', function () {
+        if (broken) return;
         started = false; t = 0; sync(); paint();
-        tio.observe(trig);
+        watch();
+        window.addEventListener('scroll', onScroll, { passive: true });
       });
     } else { visible = true; start(); }
     document.addEventListener('visibilitychange', sync);
     if (v.still) { started = true; paint(); }
+    check();
 
     registry[opts.name] = {
       /** @param {number} at */
       seek: function (at) { paused = true; started = true; sync(); t = at; paint(); },
-      frames: function () { return frames; }
+      frames: function () { return frames; },
+      state: function () { return broken ? 'still: ' + broken : started ? (v.still ? 'still' : 'running') : 'waiting'; }
     };
-    return { refit: fit, canvas: canvas };
   }
+  /** @param {string} why */
+  function dead(why) { return { seek: function () {}, frames: function () { return 0; }, state: function () { return 'image: ' + why; } }; }
 
   /* ---------- Boot ---------- */
   function boot() {
@@ -840,13 +947,17 @@
     var panels = { roadmap: Roadmap, team: Team, options: Options };
     Array.prototype.forEach.call(document.querySelectorAll('canvas[data-panel]'), function (/** @type {HTMLCanvasElement} */ c) {
       var name = c.getAttribute('data-panel') || '';
+      if (!panels[name]) return;
       // data-trigger: start this panel when that element is fully in view instead (round 6: the first panel
       // starts as soon as the value intro's last line is on screen)
       var sel = c.getAttribute('data-trigger');
       var trig = sel ? document.querySelector(sel) : null;
-      if (panels[name]) stage(c, panels[name](), trig ? { name: name, trigger: trig, triggerAt: 1 } : { name: name, activeAt: 0.45 });
+      // round 11: one panel's failure never stops the others, and leaves its own card on the still image
+      try { stage(c, panels[name](), trig ? { name: name, trigger: trig, triggerAt: 1 } : { name: name, activeAt: 0.45 }); }
+      catch (err) { showStill(c, true); registry[name] = dead('boot: ' + (err && /** @type {Error} */ (err).message)); }
     });
-    if (debug) Object.assign(window, { __nccArt: { /** @param {string} n @param {number} t */ seek: function (n, t) { if (registry[n]) registry[n].seek(t); }, frames: function () { var o = {}; Object.keys(registry).forEach(function (k) { o[k] = registry[k].frames(); }); return o; } } });
+    /** @type {any} */ (window).__nccArtBooted = true;
+    if (debug) Object.assign(window, { __nccArt: { /** @param {string} n @param {number} t */ seek: function (n, t) { if (registry[n]) registry[n].seek(t); }, frames: function () { var o = {}; Object.keys(registry).forEach(function (k) { o[k] = registry[k].frames(); }); return o; }, state: function () { var o = {}; Object.keys(registry).forEach(function (k) { o[k] = registry[k].state(); }); return o; } } });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

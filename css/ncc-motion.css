@@ -131,9 +131,7 @@ body {
   --dur-lockup-piece: 820ms;
   --ease-sweep: cubic-bezier(0.37, 0, 0.63, 1);
   --dur-caret-blink: 1060ms;
-  --dur-loader-piece: 520ms;
-  --dur-loader-lift: 760ms;
-  --loader-lift-delay: 120ms;
+  --dur-logo-tint: 220ms;
   --dur-step-exit: 380ms;
 }
 
@@ -277,36 +275,31 @@ h2[tabindex="-1"]:focus { outline: none; }
   backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: 0 var(--hairline) 0 var(--line);
 }
-.brand__shine {
+/* Round 11: no shimmer. The symbol is the plain white file; on hover (pointer devices) and keyboard focus of the
+   logo link, a Saif layer masked by the logo file fades in over the symbol only, and out on leave. Color only, so it
+   also runs under reduced motion. Native class .brand__tint holds position, inset and pointer-events. */
+.brand__tint {
   -webkit-mask: url("https://cdn.prod.website-files.com/6af29368402dd93a3f71f7f5/6af2c8e14dd2addd0446ad91_ncc-horizontal-light.svg") 0 0 / 100% 100% no-repeat;
   mask: url("https://cdn.prod.website-files.com/6af29368402dd93a3f71f7f5/6af2c8e14dd2addd0446ad91_ncc-horizontal-light.svg") 0 0 / 100% 100% no-repeat;
 }
-.brand__shine::before {
+.brand__tint::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
   width: 34.05%;
-  background: linear-gradient(112deg,
-    transparent 0 36%,
-    var(--tint-saif-35) 42%,
-    var(--c-saif) 48% 52%,
-    var(--tint-saif-35) 58%,
-    transparent 64% 100%) 100% 0 / 300% 100% no-repeat;
+  background: var(--c-saif);
   opacity: 0;
+  transition: opacity var(--dur-logo-tint) var(--ease-out);
 }
-.brand__shine.is-shining::before { animation: brand-shine 1700ms var(--ease-sweep) both; }
-@keyframes brand-shine {
-  0% { background-position: 100% 0; opacity: 1; }
-  100% { background-position: 0% 0; opacity: 1; }
-}
+@media (hover: hover) { .brand:hover .brand__tint::before { opacity: 1; } }
+.brand:focus-visible .brand__tint::before { opacity: 1; }
 @media (max-width: 767px) {
-  .brand__shine {
+  .brand__tint {
     -webkit-mask-image: url("https://cdn.prod.website-files.com/6af29368402dd93a3f71f7f5/6af2c8e14ed4607c30b9b6f2_ncc-symbol-light.svg");
     mask-image: url("https://cdn.prod.website-files.com/6af29368402dd93a3f71f7f5/6af2c8e14ed4607c30b9b6f2_ncc-symbol-light.svg");
   }
-  .brand__shine::before { width: 100%; }
+  .brand__tint::before { width: 100%; }
 }
-@media (prefers-reduced-motion: reduce) { .brand__shine { display: none; } }
 .site-nav__link[aria-current="true"],
 .site-nav__toggle[aria-expanded="true"] { color: var(--text-strong); text-decoration-color: currentColor; }
 .site-nav__toggle[hidden] { display: none; }
@@ -328,38 +321,9 @@ h2[tabindex="-1"]:focus { outline: none; }
 .header-moon .ring { fill: none; stroke: currentColor; stroke-width: 1.25; opacity: 0.55; }
 .header-moon .lit { fill: currentColor; }
 
-/* ---------- Loader (loader.js; markup arrives in Phase 3) ---------- */
-.loader { display: none; }
-.has-loader .loader {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(to bottom, var(--hero-sky) 58%, var(--hero-earth) 100%);
-  transition: transform var(--dur-loader-lift) var(--ease-organic) var(--loader-lift-delay);
-}
-.loader.is-leaving { transform: translate3d(0, -100%, 0); }
-.loader__mark {
-  width: clamp(5.5rem, 4.5rem + 4vw, 8rem);
-  height: auto;
-  overflow: visible;
-  transition: opacity 420ms var(--ease-out), transform 520ms var(--ease-out);
-}
-.loader.is-leaving .loader__mark { opacity: 0; transform: scale(1.06); }
-.loader__fill { fill: var(--c-saif); }
-.loader__brush {
-  fill: none;
-  stroke: #fff;   /* mask luminance: white shows the piece. Not a color on screen. */
-  stroke-width: 46;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 1 1.02;
-  stroke-dashoffset: 1.01;
-  transition: stroke-dashoffset var(--dur-loader-piece) var(--ease-settle);
-}
-.loader__brush--rev { stroke-dashoffset: -1.01; }
-.is-drawn .loader__brush { stroke-dashoffset: 0; }
+/* ---------- Loader ----------
+   Round 11: the loader's rules live inline in the Site Code embed, so it paints with the first frame and never waits
+   for this file, and its three timing tokens live there too (loader.js may run before this file arrives). */
 .is-loading .hero .tr-li { transform: translate3d(0, 115%, 0); opacity: 0; transition: none; }
 .is-loading .hero [data-reveal] { opacity: 0; transform: translate3d(0, var(--rise), 0); transition: none; }
 
@@ -421,6 +385,10 @@ html:not(.js) .hero__stage,
 
 /* ---------- Solution ---------- */
 @media (min-width: 992px) { .js .journey__copy { --rise: 3rem; } }
+/* Round 11: each value card's still image (native class .journey__still) shows only when the canvas cannot draw:
+   hidden with JS, shown again by .art-off (the boot script, when line-art.js never ran) or inline by line-art.js. */
+.js .journey__still { display: none; }
+.art-off .journey__still { display: block; }
 
 /* ---------- Meet Tami ---------- */
 .about { --ink-voice: #2A2B80; /* color-mix() version in the @supports block below */ }
