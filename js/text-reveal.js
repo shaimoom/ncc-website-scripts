@@ -25,7 +25,12 @@
      verbs keep their kerning (PREPARE no longer reads "PREP ARE"). Before anything animates it again, it is split again
      from the laid-out text: on replay (reset), on hide(), and on window.NCCText.split(el), which a choreography owner
      calls before it moves a step out (approach-plant.js). The look of the reveal does not change.
-   - Before a reveal starts, lines measured under other spacing or fonts (wider than their box) are re-measured. */
+   - Before a reveal starts, lines measured under other spacing or fonts (wider than their box) are re-measured.
+   - Polish 14 (Vera's re-inspection): a choreography owner arms the settle backstop through window.NCCText.settle(el)
+     whenever a step is on stage or the section comes back into view, and every backstop also settles any other revealed
+     element that has landed but is still split. transitionend alone missed a step that was already at rest.
+   - Round 10: letter-split words are set at the flowing text's own letter positions (matchKerning), so the swap back to
+     flowing text moves nothing. Line-split text keeps whole words in one run and already lands within 0.2px. */
 // @ts-check
 (function () {
   'use strict';
@@ -33,7 +38,7 @@
   var doc = document.documentElement;
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /** @type {{reveal: (el: Element) => void, hide: (el: Element) => void, split: (el: Element) => boolean, reset: (scope: Element) => void, refresh: () => void, ready: Promise<void>}} */
+  /** @type {{reveal: (el: Element) => void, hide: (el: Element) => void, split: (el: Element) => boolean, settle: (el: Element) => void, reset: (scope: Element) => void, refresh: () => void, ready: Promise<void>}} */
   var api;
   /** @type {() => void} */
   var resolveReady = function () {};
@@ -48,7 +53,7 @@
   // (the split path below replaces both with versions that know about the restored text)
 
   if (reduce || !('IntersectionObserver' in window)) {
-    api = { reveal: reveal, hide: hide, split: function () { return false; }, reset: function () {}, refresh: function () {}, ready: ready };
+    api = { reveal: reveal, hide: hide, split: function () { return false; }, settle: function () {}, reset: function () {}, refresh: function () {}, ready: ready };
     Object.assign(window, { NCCText: api });
     document.querySelectorAll('[data-split]').forEach(function (el) { el.classList.add('is-in'); });
     release();
@@ -100,9 +105,58 @@
     return node;
   }
 
+  /** Round 10: where the browser sets each letter of the element's flowing text (left edge and top, CSS px from the
+      element's box), whitespace skipped. Kerning, letter-spacing and subpixel placement are all in these numbers.
+      Empty when the element is not laid out. @param {HTMLElement} el @returns {{x: number, y: number}[]} */
+  function glyphs(el) {
+    /** @type {{x: number, y: number}[]} */
+    var out = [];
+    var box = el.getBoundingClientRect();
+    if (!box.width) return out;
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    var range = document.createRange();
+    while (walker.nextNode()) {
+      var node = /** @type {Text} */ (walker.currentNode);
+      var text = node.nodeValue || '';
+      for (var i = 0; i < text.length; i++) {
+        if (/\s/.test(text[i])) continue;
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        var r = range.getBoundingClientRect();
+        out.push({ x: r.left - box.left, y: r.top - box.top });
+      }
+    }
+    return out;
+  }
+
+  /** Round 10, Shai: "the letters in the heading shift a bit after landing its animation". Each letter rises in its own
+      mask, and a kerning pair cannot span two masks, so the split word was set wider than the flowing word (PREPARE's A
+      sat 6.8px right of where it lands once the text settles, EXECUTE's T 4.2px). Each mask now takes the difference as
+      a margin, measured against the flowing text, so the split letters stand exactly where the settled word sets them,
+      kerning included. A letter that starts a new line is left alone.
+      @param {HTMLElement} el @param {{x: number, y: number}[]} flow @param {HTMLElement[]} masks */
+  function matchKerning(el, flow, masks) {
+    if (flow.length !== masks.length || masks.length < 2) return;
+    var box = el.getBoundingClientRect();
+    var pad = parseFloat(getComputedStyle(masks[0]).paddingLeft) || 0;
+    var at = masks.map(function (m) { return m.getBoundingClientRect().left + pad - box.left; });
+    var lh = parseFloat(getComputedStyle(el).lineHeight) || parseFloat(getComputedStyle(el).fontSize) || 16;
+    for (var i = 1; i < masks.length; i++) {
+      if (Math.abs(flow[i].y - flow[i - 1].y) > lh / 2) continue;
+      var d = (flow[i].x - flow[i - 1].x) - (at[i] - at[i - 1]);
+      if (Math.abs(d) > 0.005) masks[i].style.marginLeft = 'calc(' + getComputedStyle(masks[i]).marginLeft + ' + ' + d.toFixed(3) + 'px)';
+    }
+  }
+
   /** @param {Item} it */
   function build(it) {
     var el = it.el;
+    // letters: measure the flowing word first (the original markup, laid out as it will be once it settles)
+    var flow = null;
+    if (it.mode === 'chars') {
+      el.innerHTML = it.html;
+      flow = glyphs(el);
+    }
     el.innerHTML = '';
     var sr = document.createElement('span');
     sr.className = 'sr-only';
@@ -134,6 +188,7 @@
       el.style.setProperty('--tr-n', String(n));
       vis.classList.add('tr--chars');
       it.vis = vis;
+      if (flow && flow.length) matchKerning(el, flow, /** @type {HTMLElement[]} */ (Array.prototype.slice.call(vis.querySelectorAll('.tr-cm'))));
       return;
     }
 
@@ -240,7 +295,9 @@
       @param {Item} it */
   function flatten(it) {
     clearTimeout(it.timer);
-    if (it.flat || !it.vis || !landed(it)) return;
+    // Round 9 overlap fix: never while a row is moving. A step told to leave reads as at rest on its first frame, and a
+    // settle timer from its entrance landing there would put its flat text back on stage.
+    if (it.flat || !it.vis || !landed(it) || moving(it)) return;
     var want = it.mode === 'chars' ? null : rows(it).map(function (row) { return (row.textContent || '').replace(/\s+/g, ''); }).join('|');
     // 1. the original markup. 2. if a break moved (a paragraph breaking at a hyphen the split kept whole), the same
     //    markup with each hyphenated word kept whole. Chrome's text-wrap: balance stops balancing around such a span,
@@ -263,7 +320,29 @@
     if (!r.length) return;
     var cs = getComputedStyle(r[r.length - 1]);
     var sec = function (/** @type {string} */ v) { return Math.max.apply(null, v.split(',').map(function (x) { return (parseFloat(x) || 0) * (/ms/.test(x) ? 1 : 1000); })); };
-    it.timer = window.setTimeout(function () { flatten(it); }, sec(cs.transitionDelay) + sec(cs.transitionDuration) + 150);
+    it.timer = window.setTimeout(function () { flatten(it); sweep(); }, sec(cs.transitionDelay) + sec(cs.transitionDuration) + 150);
+  }
+  /** Polish 14: a backstop also settles every other revealed element that has landed but is still split. A row whose
+      transition was cancelled (is-resetting turns transitions off while a step returns to rest off screen) never fires
+      transitionend, so without this it could stay split. Landed and still only: a mid-rise element keeps its own timer,
+      and a step that has just been told to leave (its first frame still reads as at rest) keeps its exit. */
+  function sweep() {
+    items.forEach(function (o) {
+      if (!o.flat && o.vis && o.el.classList.contains('is-in') && landed(o) && !moving(o)) flatten(o);
+    });
+  }
+  /** any row with a transition still running @param {Item} it */
+  function moving(it) {
+    return rows(it).some(function (row) {
+      return typeof row.getAnimations === 'function' && row.getAnimations().some(function (a) { return a.playState === 'running'; });
+    });
+  }
+  /** for a choreography owner: arm the backstop on a revealed element that is still split (re-entry: the step is
+      already is-in, so reveal() does not run and its transform is already at rest, so no transitionend fires)
+      @param {Element} el */
+  function settle(el) {
+    var it = find(el);
+    if (it && !it.flat && it.vis && el.classList.contains('is-in')) settleLater(it);
   }
   /** split again from the flowing text, keeping the current state; true if it rebuilt @param {Item} it */
   function resplit(it) {
@@ -414,7 +493,7 @@
     });
   }
 
-  api = { reveal: function (el) { reveal(el); }, hide: function (el) { hide(el); }, split: split, reset: reset, refresh: function () { items.forEach(function (it) { it.width = -1; }); splitAll(); }, ready: ready };
+  api = { reveal: function (el) { reveal(el); }, hide: function (el) { hide(el); }, split: split, settle: settle, reset: reset, refresh: function () { items.forEach(function (it) { it.width = -1; }); splitAll(); }, ready: ready };
   Object.assign(window, { NCCText: api });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

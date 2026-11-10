@@ -493,6 +493,22 @@ html:not(.js) .hero__stage,
   .js .areas[data-reveal] .area { opacity: 1; animation: none; }
 }
 
+/* ---------- Core Capabilities: the symbols draw in before their titles (round 10, main.js initRowMarks) ----------
+   As its row enters, the symbol turns and grows into place in gold, then cools to its muted indigo. Static under reduced
+   motion and without JS. The native .row__mark class holds the size, the mask and the resting color. */
+@media (prefers-reduced-motion: no-preference) {
+  .js .row__mark { opacity: 0; transform: scale(0.4) rotate(-50deg); background-color: var(--accent); }
+  .js .row__mark.is-in {
+    opacity: 1;
+    transform: none;
+    background-color: var(--symbol-muted);
+    transition:
+      opacity 500ms var(--ease-out),
+      transform var(--dur-line) var(--ease-organic),
+      background-color 1400ms var(--ease-settle) 700ms;
+  }
+}
+
 /* ---------- How We Work Together (approach-plant.js) ---------- */
 .approach.is-still .approach__stage { display: block; position: relative; height: clamp(22rem, 60vh, 40rem); margin-bottom: var(--space-7); }
 .approach.is-still .approach__stage canvas {

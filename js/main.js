@@ -979,6 +979,54 @@
     if (/[?&]wall-debug\b/.test(location.search)) Object.assign(window, { __nccWall: { sweep: sweep } });
   }
 
+  /* ---------- Core Capabilities: each symbol draws in, then its title rises (round 10) ----------
+     Shai: "In How NCC Will Help, the symbols should elegantly load and animate onto the page before the headings, right
+     now it's just static while everything else animates." Each row head owns its title's reveal (data-reveal-owner, set
+     here, so without this script the title reveals on its own as before). As a row reaches the reading line, its symbol
+     turns and grows into place (CSS: .row__mark.is-in), and its title rises 4 staggers later. Rows that reach the line
+     together follow each other, 3 staggers apart. Replays with the section; nothing moves under reduced motion. */
+  function initRowMarks() {
+    var marks = $$('[data-row-mark], .row__mark');
+    if (!marks.length || reduceMotion) return;
+    if (!hasIO) { marks.forEach(function (m) { m.classList.add('is-in'); }); return; }
+    var stagger = parseFloat(getComputedStyle(doc).getPropertyValue('--stagger')) || 70;
+    var TITLE_LAG = 4 * stagger, ROW_GAP = 3 * stagger;
+    var rows = marks.map(function (m) {
+      var head = m.parentElement;
+      head.setAttribute('data-reveal-owner', '');
+      return { mark: m, head: head, title: $('[data-split]', head), timers: [] };
+    });
+    var free = 0; // when the next row may start
+    function play(r) {
+      var now = performance.now();
+      var at = Math.max(now, free);
+      free = at + ROW_GAP;
+      r.timers.push(window.setTimeout(function () { r.mark.classList.add('is-in'); }, at - now));
+      r.timers.push(window.setTimeout(function () { if (r.title && window.NCCText) window.NCCText.reveal(r.title); }, at - now + TITLE_LAG));
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!(e.isIntersecting || e.boundingClientRect.top < 0)) return;
+        io.unobserve(e.target);
+        rows.forEach(function (r) { if (r.head === e.target) play(r); });
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
+    function watch() { rows.forEach(function (r) { io.observe(r.head); }); }
+    // the titles are split once the fonts are in (text-reveal.js); start watching then, so each one rises
+    if (window.NCCText && window.NCCText.ready) window.NCCText.ready.then(watch); else watch();
+    var scope = rows[0].head.closest('section');
+    if (scope) scope.addEventListener('ncc:reset', function () {
+      free = 0;
+      rows.forEach(function (r) {
+        r.timers.forEach(clearTimeout); r.timers = [];
+        r.mark.classList.remove('is-in');
+        if (r.title && window.NCCText) window.NCCText.hide(r.title);
+        io.unobserve(r.head);
+        io.observe(r.head);
+      });
+    });
+  }
+
   function start() {
     initSchedule();
     initAnchors();
@@ -986,6 +1034,7 @@
     initHeader();
     initNav();
     initReveal();
+    initRowMarks();
     initClarity();
     initStripIcons();
     initHeaderMoon();

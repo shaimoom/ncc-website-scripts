@@ -293,7 +293,7 @@ function boot(sec) {
   const ticks = /** @type {HTMLElement[]} */ (Array.from(sec.querySelectorAll('[data-approach-ticks] li, .approach__ticks li')));
   const track = /** @type {HTMLElement} */ (sec.querySelector('[data-approach-track], .approach__track'));
   const titleEl = /** @type {HTMLElement} */ (sec.querySelector('[data-approach-title], .approach__title'));
-  /** @type {{reveal: (el: Element) => void, hide: (el: Element) => void, split?: (el: Element) => boolean} | undefined} */
+  /** @type {{reveal: (el: Element) => void, hide: (el: Element) => void, split?: (el: Element) => boolean, settle?: (el: Element) => void} | undefined} */
   const T = /** @type {any} */ (window).NCCText;
   const still = reduce;
   const small = () => window.innerWidth < 960;
@@ -495,31 +495,95 @@ function boot(sec) {
     const to = OPEN_AT[i];
     gTarget = lerp(from, to, smooth(0, 0.48, f));
     // the step takes the stage as its leaf begins to open
-    active = i === 0 ? 0 : (f > 0.22 ? i : i - 1);
+    const raw = i === 0 ? 0 : (f > 0.22 ? i : i - 1);
+    // Round 9 overlap fix: a little hysteresis at each hand-over (2% of a beat, about 13 to 17px), so a scroll that
+    // stops on the line, or a phone's toolbar resizing the viewport there, cannot flip the stage back and forth
+    const edge = Math.max(raw, active) + 0.22;
+    if (active < 0 || Math.abs(raw - active) > 1 || Math.abs(beat - edge) > 0.02) active = raw;
   }
 
+  /* Round 9, Shai: "When I scroll down slowly and am between steps, the step text overlaps." The leaving step's exit
+     (700 ms) and the next step's rise (1.2 s, staggered) used to start together, and a step sent back down used the
+     full staggered rise in reverse, so two (on a fast scroll, up to four) steps were visible at once.
+     Now the hand-over is a strict sequence, and only ONE step is ever on stage (not .is-off):
+       1. the step on stage leaves, everything at once, in --dur-step-exit (.is-leaving): up and out going forward,
+          back down below its masks going back;
+       2. it is switched off (.is-off, opacity 0 on the whole step: nothing of it can render, whatever its rows do);
+       3. only then does the wanted step enter, from below going forward or from above going back, with its own tile.
+     Scroll changes during an exit only change which step enters when it ends. */
+  const exitMs = () => (parseFloat(getComputedStyle(root).getPropertyValue('--dur-step-exit')) || 380) + 40;
+  let want = -1;        // the step the scroll asks for
+  let leaving = -1;     // the step mid-exit, or -1
+  let leftUp = false;   // that exit went up (forward)
+  let exitTimer = 0;
+  /** @param {HTMLElement} s */
+  const texts = (s) => /** @type {HTMLElement[]} */ (Array.from(s.querySelectorAll('[data-split]')));
+
   function setActive() {
-    if (active === shownActive) return;
-    const prev = shownActive;
-    shownActive = active;
-    // Vera fixes: a step's text settles to plain flowing text once it has risen (text-reveal.js, WCAG 1.4.12). Split
-    // it again before is-past moves its lines out, or there would be nothing to animate.
-    if (T && T.split) steps.forEach((s) => s.querySelectorAll('[data-split]').forEach((el) => { T.split && T.split(el); }));
-    steps.forEach((s, i) => {
-      const verb = s.querySelector('[data-step-verb], .step__verb'), rest = s.querySelector('[data-step-rest], .step__rest');
-      s.classList.toggle('is-active', i === active);
-      s.classList.toggle('is-past', i < active);
-      if (i <= active) { if (verb && T) T.reveal(verb); if (rest && T) T.reveal(rest); }
-      else { if (verb && T) T.hide(verb); if (rest && T) T.hide(rest); }
-    });
-    ticks.forEach((t, i) => { t.classList.toggle('is-on', i < active); t.classList.toggle('is-now', i === active); });
-    // a wave of gold light runs up the new step's leaf (or through the blossom), once
-    if (active > prev) {
-      if (active < 3) milestoneLeaves[active].waveAt = time;
+    if (active === want) return;
+    const prev = want;
+    want = active;
+    // a wave of gold light runs up the new step's leaf (or through the blossom), once; the plant answers the scroll
+    if (want > prev) {
+      if (want < 3) milestoneLeaves[want].waveAt = time;
       else budWaveAt = time;
     }
+    if (leaving >= 0) return;               // the exit under way hands over to `want` when it ends
+    if (shownActive < 0) enter(want, false);
+    else if (shownActive !== want) leave();
+  }
+
+  function leave() {
+    const i = shownActive, s = steps[i];
+    leaving = i; leftUp = want > i; shownActive = -1;
+    // Vera fixes: a settled step is plain flowing text (text-reveal.js, WCAG 1.4.12). Split it again first, or there
+    // would be nothing to move out.
+    if (T && T.split) texts(s).forEach((el) => { T.split && T.split(el); });
+    s.classList.add('is-leaving');
+    s.classList.remove('is-active');
+    if (leftUp) s.classList.add('is-past');
+    else texts(s).forEach((el) => { T && T.hide(el); });
+    clearTimeout(exitTimer);
+    exitTimer = window.setTimeout(() => {
+      s.classList.add('is-off');
+      s.classList.remove('is-leaving');
+      leaving = -1;
+      // the step that just left comes back the way it went: from above if it went up
+      enter(want, want < i || (want === i && leftUp));
+    }, exitMs());
+  }
+
+  /** @param {number} j @param {boolean} fromAbove */
+  function enter(j, fromAbove) {
+    const s = steps[j];
+    if (!s) return;
+    shownActive = j;
+    // its start position, set while it is still off and with no transition: below its masks (forward), or above them,
+    // where a step that has passed waits (back)
+    s.classList.add('is-snap');
+    if (T && T.split) texts(s).forEach((el) => { T.split && T.split(el); });
+    s.classList.remove('is-active', 'is-leaving');
+    s.classList.toggle('is-past', fromAbove);
+    texts(s).forEach((el) => { if (T) { if (fromAbove) T.reveal(el); else T.hide(el); } });
+    void s.offsetWidth;
+    s.classList.remove('is-snap');
+    // on stage: the only step not switched off
+    steps.forEach((o, k) => { if (k !== j) o.classList.add('is-off'); });
+    s.classList.remove('is-off', 'is-past');
+    s.classList.add('is-active');
+    texts(s).forEach((el) => { T && T.reveal(el); });
+    ticks.forEach((t, k) => { t.classList.toggle('is-on', k < j); t.classList.toggle('is-now', k === j); });
+    settleSteps();
   }
   let budWaveAt = -10;
+  /** Polish 14: arm text-reveal.js's settle backstop on the step on stage. It can be revealed and still split with no
+      transition left to end: on re-entry the step is already active, so setActive() returns early, and a return to rest
+      cancelled by is-resetting fires no transitionend. (Steps behind it are moved out, so they stay split.) */
+  function settleSteps() {
+    const s = steps[shownActive];
+    if (!T || !T.settle || !s) return;
+    s.querySelectorAll('[data-split]').forEach((el) => { T.settle && T.settle(el); });
+  }
 
   function readScroll() {
     const rect = track.getBoundingClientRect();
@@ -633,12 +697,18 @@ function boot(sec) {
   let lastW = window.innerWidth;
   const onResize = () => { layout(); readScroll(); lastW = window.innerWidth; };
   if ('ResizeObserver' in window) new ResizeObserver(onResize).observe(stageEl); else window.addEventListener('resize', onResize);
-  new IntersectionObserver((es) => { visible = es[0].isIntersecting; sync(); }, { rootMargin: '10% 0px 10% 0px' }).observe(sec);
+  new IntersectionObserver((es) => {
+    const was = visible;
+    visible = es[0].isIntersecting;
+    if (visible && !was) settleSteps(); // Polish 14: re-entry, from above or below
+    sync();
+  }, { rootMargin: '10% 0px 10% 0px' }).observe(sec);
   document.addEventListener('visibilitychange', sync);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layout(); });
+  steps.forEach((s) => s.classList.add('is-off')); // nothing on stage until the first step enters
   layout();
   readScroll();
-  if (shownActive < 0) { active = 0; setActive(); }
+  if (want < 0) { active = 0; setActive(); }
 
   if (debug) {
     Object.assign(window, {
