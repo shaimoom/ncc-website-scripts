@@ -1,24 +1,22 @@
-/* Newaz Clinical Consulting, the loader. Round 9 (Shai: "please add a loader screen for the Vercel site and local").
-
-   Once per browser session, on the hero's own ground, the NCC symbol draws in solid Saif gold, piece by piece, by the
-   closing lockup's two-brush reveal (same paths, same masks, center outward). The pieces are the progress: four draw on
-   time alone, the other six only as the page gets ready. Ready means:
+/* The loader. Once per browser session, on the hero's own ground, the NCC symbol draws in solid Saif gold, piece by
+   piece, by the closing lockup's two-brush reveal (same paths, same masks, center outward). The pieces are the
+   progress: four draw on time alone, the other six only as the page gets ready. Ready means:
      1. the hero's faces are loaded (the same four text-reveal.js waits for), then document.fonts.ready
      2. the headings are split (window.NCCText.ready), so the headline can rise the moment the loader leaves
      3. the hero tree has booted and drawn its first frame (hero-tree.js: 'ncc:hero-ready'), or, without WebGL,
         the still image has loaded
    It stays at least MIN_MS, so it never flashes, and starts to leave by MAX_MS (from navigation start) whatever is
    still pending, so it never traps the visitor. Leaving: the symbol scales up a touch and fades, and the ground lifts
-   away. A third of the way into the lift (most of the ground is already gone), html.is-loading comes off and 'ncc:loaded' fires: the hero headline rises
+   away. A third of the way into the lift, html.is-loading comes off and 'ncc:loaded' fires: the hero headline rises
    (CSS) and the hero tree starts its clock, so the first seed drops in view, never behind the loader.
 
    The head script decides (html.has-loader: JS on, no reduced motion, first visit this session, or ?loader) and holds a
-   6 s failsafe (round 11; was 4.5 s) that frees the page even if this file never runs. Without JS the loader is display: none.
+   6 s failsafe that frees the page even if this file never runs. Without JS the loader is display: none.
    Accessibility: while it is up, everything else in the body is inert (no focus, no clicks) and wheel, touch and key
-   scrolling are held, so the visitor cannot land mid-page under it. Vera fixes: the loader is role="status" with
-   visually hidden text, "Loading Newaz Clinical Consulting" (its drawing is aria-hidden), <main> is aria-busy, and both
-   clear at the release, so a screen reader never meets an empty, silent document. In a browser without inert (Safari
-   before 15.5), Tab is held too, so focus cannot reach the links under the loader.
+   scrolling are held, so the visitor cannot land mid-page under it. The loader is role="status" with visually hidden
+   text, "Loading Newaz Clinical Consulting" (its drawing is aria-hidden), <main> is aria-busy, and both clear at the
+   release, so a screen reader never meets an empty, silent document. In a browser without inert (Safari before 15.5),
+   Tab is held too, so focus cannot reach the links under the loader.
    ?loader-debug exposes window.__nccLoader (the timeline marks, ms from navigation start). */
 // @ts-check
 (function () {
@@ -35,8 +33,7 @@
   var HOLD_MS = 120;         // the finished symbol rests this long before it leaves
   var MIN_MS = 800;          // never leave before this (ms from navigation start)
   var FORCE_DRAW_MS = 3800;  // draw whatever is left from here on, still one piece per STEP_MS, done by MAX_MS
-  var MAX_MS = 5000;         // start to leave by here, ready or not. Round 11 (Shai: "shouldn't the loader wait till the
-                             // site is fully loaded?"): was 3000, which let a slow phone see the page half built
+  var MAX_MS = 5000;         // start to leave by here, ready or not, so a slow phone does not see the page half built
   var RELEASE_AT = 0.35;     // fraction of the lift when the hero starts (the lift is front-loaded: most of the ground is gone)
 
   /** @param {string} name @param {number} fallback */
@@ -55,9 +52,9 @@
   if (/[?&]loader-debug\b/.test(location.search)) Object.assign(window, { __nccLoader: marks });
 
   /* ---------- Hold the page underneath ----------
-     Round 11 (Vera WF-1): on Webflow this file runs async from inside the Loader, before the rest of the body is
-     parsed, so the symbol starts drawing at once. The page under it is held as soon as it exists (DOMContentLoaded),
-     and never after the release. */
+     On Webflow this file runs async from inside the Loader, before the rest of the body is parsed, so the symbol
+     starts drawing at once. The page under it is held as soon as it exists (DOMContentLoaded), and never after the
+     release. */
   /** @type {HTMLElement[]} */
   var held = [];
   /** @type {HTMLElement | null} */
@@ -114,7 +111,7 @@
   var globals = /** @type {{NCCText?: {ready?: Promise<void>}, __nccHeroReady?: boolean}} */ (/** @type {unknown} */ (window));
   var waited = false, imgAsked = false;
   function afterScripts() {
-    // Round 11: on Webflow this file runs async, possibly before the deferred scripts (readyState 'interactive', no
+    // On Webflow this file runs async, possibly before the deferred scripts (readyState 'interactive', no
     // NCCText yet): wait for DOMContentLoaded once, which always follows them. Never wait twice, so a missing
     // text-reveal.js still settles.
     if (!globals.NCCText && !waited && document.readyState !== 'complete') {
@@ -166,7 +163,7 @@
     var now = performance.now();
     var allowed = now >= FORCE_DRAW_MS ? order.length : FREE_PIECES + Math.round((order.length - FREE_PIECES) * done / tasks);
     var n = Math.min(order.length, allowed);
-    // round 11 (Vera WF-1): never more than one new piece per STEP_MS, so a late draw is never rushed
+    // never more than one new piece per STEP_MS, so a late draw is never rushed
     if (drawn < n && (drawn === 0 || now - lastStart >= STEP_MS)) {
       var m = loader.querySelector('#ld-m' + order[drawn].i);
       if (m) m.classList.add('is-drawn');

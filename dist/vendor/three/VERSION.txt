@@ -1,0 +1,4 @@
+three.js r160 (npm three@0.160.0), MIT, see LICENSE.
+Source tarball sha256 1ee2f935c4f555814b388e87b5ef78a44856bd2e9d0feb88643a6e193fb42856
+Files: build/three.module.min.js, examples/jsm/postprocessing (EffectComposer, RenderPass, UnrealBloomPass, OutputPass, ShaderPass, MaskPass, Pass), examples/jsm/shaders (CopyShader, LuminosityHighPassShader, OutputShader). Unmodified.
+Loaded through the import map in index.html. No CDN at runtime.

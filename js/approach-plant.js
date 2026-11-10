@@ -1,21 +1,14 @@
-/* Newaz Clinical Consulting, How We Work Together. Round 5.
-   A pinned, scroll-driven stage. A plant grows with the scroll (three.js r160, vendored, through the import map),
-   keeping the character Shai liked in round 4: one stem, leaves. It is drawn in the site's line-and-light
-   language: dark bodies, glowing outlines, midribs and veins, a rim of sky light, gold where it matters, bloom.
+/* How We Work Together: a pinned, scroll-driven stage. A plant grows with the scroll (three.js r160 through the
+   import map). Four milestones: as the growth front reaches each one, a leaf opens (the last time, the bud at the
+   tip opens into a blossom), a wave of gold light runs along it and that step takes the stage. The camera rises
+   and eases around the plant, which frames itself into the free part of the stage.
 
-   Four milestones. As the growth front reaches each one, a leaf opens (the last time, the bud at the tip opens
-   into a blossom), a wave of gold light runs from its base to its tip, it glows, and that step takes the stage:
-   its numeral, its verb set very large, the rest of its line beneath. The camera rises and eases around the
-   plant as it grows, so it reads as a living, dimensional thing. The plant frames itself into the free part of
-   the stage (beside the text on desktop, above it on phones).
-
-   Modes, chosen here and expressed as classes on the section:
-   - .is-pinned  the stage (default when WebGL works and motion is allowed)
+   Modes, set as classes on the section:
+   - .is-pinned  the stage (WebGL works and motion is allowed)
    - .is-still   reduced motion: one still frame of the grown plant beside all four steps
    - neither     no WebGL or this module failed: the four steps in order, as plain text
-   Text: the step copy is split by text-reveal.js; this module only says which step is on stage
+   The step copy is split by text-reveal.js; this module only says which step is on stage
    (window.NCCText.reveal / .hide), through data-reveal-owner on the list.
-   This file does not import from, or touch, the hero (hero-tree.js, tree-gen.js).
    ?plant-debug exposes window.__nccPlant.seek(progress 0..1) and .fps(). */
 // @ts-check
 import * as THREE from 'three';
@@ -260,8 +253,8 @@ function leafGeometry(o) {
 }
 
 /* ---------- Boot ---------- */
-/* Vera fixes: probe WebGL once, before any renderer exists, and share the answer with hero-tree.js
-   (window.__nccWebGL). Without it three.js logs "A WebGL context could not be created" for each renderer it tries.
+/* Probe WebGL once, before any renderer exists, and share the answer with hero-tree.js (window.__nccWebGL).
+   Without it three.js logs "A WebGL context could not be created" for each renderer it tries.
    The probe context is released at once, so it never counts against the browser's context limit. */
 function hasWebGL() {
   const g = /** @type {{__nccWebGL?: boolean}} */ (/** @type {unknown} */ (window));
@@ -278,10 +271,9 @@ function hasWebGL() {
   return ok;
 }
 
-/* Round 11 (Lighthouse mobile: this boot was 0.6 s of one long task at start-up, for a section far below the fold).
-   The layout classes are set now, so nothing on the page moves later; the renderer, the plant and the scroll scrub
-   are built once the loader has released the page, when the browser is idle or the section comes within one screen
-   of view, whichever is first. */
+/* The layout classes are set now, so nothing on the page moves later. The renderer, the plant and the scroll scrub
+   are built after the loader releases the page, when the browser is idle or the section comes within one screen
+   of view, whichever is first, to keep this work out of start-up. */
 if (section && !root.classList.contains('no-gl') && hasWebGL()) {
   const sec = section;
   const list = sec.querySelector('[data-steps]');
@@ -321,7 +313,7 @@ function boot(sec) {
   const still = reduce;
   const small = () => window.innerWidth < 960;
 
-  // round 11: the classes and the reveal owner are set before boot (see above)
+  // the classes and the reveal owner are set before boot (see above)
 
   /* renderer */
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
@@ -518,16 +510,13 @@ function boot(sec) {
     gTarget = lerp(from, to, smooth(0, 0.48, f));
     // the step takes the stage as its leaf begins to open
     const raw = i === 0 ? 0 : (f > 0.22 ? i : i - 1);
-    // Round 9 overlap fix: a little hysteresis at each hand-over (2% of a beat, about 13 to 17px), so a scroll that
+    // A little hysteresis at each hand-over (2% of a beat, about 13 to 17px), so a scroll that
     // stops on the line, or a phone's toolbar resizing the viewport there, cannot flip the stage back and forth
     const edge = Math.max(raw, active) + 0.22;
     if (active < 0 || Math.abs(raw - active) > 1 || Math.abs(beat - edge) > 0.02) active = raw;
   }
 
-  /* Round 9, Shai: "When I scroll down slowly and am between steps, the step text overlaps." The leaving step's exit
-     (700 ms) and the next step's rise (1.2 s, staggered) used to start together, and a step sent back down used the
-     full staggered rise in reverse, so two (on a fast scroll, up to four) steps were visible at once.
-     Now the hand-over is a strict sequence, and only ONE step is ever on stage (not .is-off):
+  /* Strict hand-over: only ONE step is ever on stage (not .is-off).
        1. the step on stage leaves, everything at once, in --dur-step-exit (.is-leaving): up and out going forward,
           back down below its masks going back;
        2. it is switched off (.is-off, opacity 0 on the whole step: nothing of it can render, whatever its rows do);
@@ -558,7 +547,7 @@ function boot(sec) {
   function leave() {
     const i = shownActive, s = steps[i];
     leaving = i; leftUp = want > i; shownActive = -1;
-    // Vera fixes: a settled step is plain flowing text (text-reveal.js, WCAG 1.4.12). Split it again first, or there
+    // A settled step is plain flowing text (text-reveal.js, WCAG 1.4.12). Split it again first, or there
     // would be nothing to move out.
     if (T && T.split) texts(s).forEach((el) => { T.split && T.split(el); });
     s.classList.add('is-leaving');
@@ -598,7 +587,7 @@ function boot(sec) {
     settleSteps();
   }
   let budWaveAt = -10;
-  /** Polish 14: arm text-reveal.js's settle backstop on the step on stage. It can be revealed and still split with no
+  /** Arm text-reveal.js's settle backstop on the step on stage. It can be revealed and still split with no
       transition left to end: on re-entry the step is already active, so setActive() returns early, and a return to rest
       cancelled by is-resetting fires no transitionend. (Steps behind it are moved out, so they stay split.) */
   function settleSteps() {
@@ -722,7 +711,7 @@ function boot(sec) {
   new IntersectionObserver((es) => {
     const was = visible;
     visible = es[0].isIntersecting;
-    if (visible && !was) settleSteps(); // Polish 14: re-entry, from above or below
+    if (visible && !was) settleSteps(); // re-entry, from above or below
     sync();
   }, { rootMargin: '10% 0px 10% 0px' }).observe(sec);
   document.addEventListener('visibilitychange', sync);

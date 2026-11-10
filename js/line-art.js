@@ -1,6 +1,4 @@
-/* Newaz Clinical Consulting, line art. Round 4, round 5 (no dust), round 6 (square cards, set in CSS), round 7 (the map has no frame).
-   One small 2D canvas system for every drawn illustration below the hero:
-   the three value panels. (The proof line and the closing curve were retired in round 5.)
+/* Line art: one small 2D canvas system for the three value panels below the hero.
 
    Everything shares one look, the look of the clarity strip and the hero's glow:
    - fine lines: LINE (1.25 CSS px) for a drawn line, HAIR (0.75) for structure, each with one soft halo
@@ -8,19 +6,18 @@
    - colors: read from the CSS tokens; sky-blue Biscuit lines, gold Saif highlights,
      white cores, and --signal-stop for the dead-end glow only
    - easing: the CSS motion tokens (--ease-organic, --ease-out, --ease-settle), parsed, so CSS and canvas move alike
-   - no backgrounds drawn here: since round 6 each canvas sits inside a square card (CSS), with no dust or stars
+   - no backgrounds drawn here: each canvas sits inside a square card (CSS)
 
    A stage draws only while it is on screen and the tab is visible, and starts its clock
    when it becomes active. Under reduced motion each stage draws one still, final frame.
    ?art-debug exposes window.__nccArt.seek(name, seconds) for filmstrips.
 
-   Round 11 (Shai's iPhone: "the solution illustrations are still not loading"; his screenshot showed no card at all):
-   the card's height no longer depends on aspect-ratio (a .journey__sizer gives it, see the CSS). Here, each panel is
-   hardened so its area is never blank: a panel that cannot start (no 2D context, an error while drawing, a canvas
+   A panel's area is never blank: a panel that cannot start (no 2D context, an error while drawing, a canvas
    with no size) draws its final still frame, or, when even that fails, shows the still image in the card
-   (.journey__still, not displayed while the canvas draws). Sizes come from the element box (not transformed rects), the
-   backing store is capped at DPR 2 and 4 megapixels, no newer canvas API is required (getTransform is optional), and
-   a scroll check backs up the IntersectionObserver start. */
+   (.journey__still, not displayed while the canvas draws). The card's height comes from .journey__sizer, not
+   aspect-ratio. Sizes come from the element box (not transformed rects), the backing store is capped at DPR 2
+   and 4 megapixels, no newer canvas API is required (getTransform is optional), and a scroll check backs up the
+   IntersectionObserver start. */
 // @ts-check
 (function () {
   'use strict';
@@ -287,8 +284,8 @@
     ctx.globalAlpha = 1;
   }
 
-  /** Round 7: an offscreen layer the size of ctx's canvas, cleared, with the view's drawing transform, one per canvas.
-      Round 11: the transform comes from the view (v.m), not ctx.getTransform(), which older Safari lacks.
+  /** An offscreen layer the size of ctx's canvas, cleared, with the view's drawing transform, one per canvas.
+      The transform comes from the view (v.m), not ctx.getTransform(), which older Safari lacks.
       Null when the browser will not give another 2D context (iOS canvas memory): the caller draws without the layer.
       @type {WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>} */
   var layers = new WeakMap();
@@ -328,7 +325,7 @@
   /* =====================================================================
      Panel 1, A Clear Roadmap
      A folded map in technical line art opens, panel by panel, then its lower half
-     drops open, and its paper fades into the card (round 7: no frame). Grid and contours draw in, fading at
+     drops open, and its paper fades into the card. Grid and contours draw in, fading at
      their edges, a gold route traces from A to B,
      B glows and radiates, then holds with a gentle pulse while a small light
      travels the route now and then.
@@ -409,7 +406,7 @@
           ctx.lineTo(q.x2, rowC + PH * q.s2 / 2); ctx.lineTo(q.x1, rowC + PH * q.s1 / 2); ctx.closePath();
         }
         var edgeA = open ? 1 - seg(t, T.dropAt + T.dropDur, 0.4) : 1;
-        // round 7: once open, the paper itself fades into the card, so no rectangle is left around the map
+        // once open, the paper itself fades into the card, so no rectangle is left around the map
         var paperA = open ? 1 - E.settle(seg(t, T.dropAt + T.dropDur + 0.1, 1.1)) : 1;
         // back to front: a folded panel lies behind the one it is folded against
         if (paperA > 0.003) quads.slice().reverse().forEach(function (q) {
@@ -437,11 +434,11 @@
 
         if (t < T.dropAt + T.dropDur) return;
         // ---- the open map: dashed creases, grid, contours ----
-        // Round 7 (Shai: "remove the bounding box of the map, it looks and feels constricting"): no outline and no
+        // No outline and no
         // rectangular clip. The creases, the grid and the contours are drawn on their own layer, which fades out
         // toward the map's edges in a soft ellipse, so the map dissolves into the card instead of ending in a frame.
         var settle = seg(t, T.dropAt + T.dropDur, 0.4);
-        // round 11: without a layer (no second context), the open map draws straight onto the card, unfaded
+        // without a layer (no second context), the open map draws straight onto the card, unfaded
         var lc = layer(ctx, v) || ctx;
         stroke(lc, v, function (c) {
           for (var j = 1; j < COLS; j++) { c.moveTo(X0 + PW * j, Y0); c.lineTo(X0 + PW * j, Y0 + MH); }
@@ -476,7 +473,6 @@
         var bIn = E.organic(seg(t, T.aAt + 0.2, 0.6));
         var lit = seg(t, arrive - 0.05, 0.35);
         if (bIn > 0) {
-          // round 8 (Shai: "double the size, just the main yellow glowing dot"): B's dot is twice round 7's, its ring wider to match
           ring(ctx, v, B.x, B.y, 13 * bIn, lit > 0 ? mix(C.sky, C.gold, lit) : C.sky, 0.85 * bIn, LINE);
         }
         var rp = E.settle(seg(t, T.routeAt, T.routeDur));
@@ -597,7 +593,6 @@
         // the center
         if (coreIn > 0) {
           var breath = 0.5 + 0.5 * Math.sin(t * Math.PI * 2 / 3.6);
-          // round 8: the center's dot twice round 7's size, its ring and bloom grown to match
           glow(ctx, cx, cy, (82 + 14 * breath) * coreIn / v.s, C.gold, 0.5 * coreIn);
           ring(ctx, v, cx, cy, 18 * coreIn, C.gold, 0.85 * coreIn, LINE);
           dot(ctx, v, cx, cy, 8.8 * coreIn, C.gold, coreIn);
@@ -759,7 +754,7 @@
         }
         // the stub it probes, lit while it is on it
         // the light
-        spark(ctx, v, me.x, me.y, C.gold, appear, 2.3);   // round 8: the searching light, twice round 7's size
+        spark(ctx, v, me.x, me.y, C.gold, appear, 2.3);
         if (me.look !== 0) glow(ctx, me.x + me.look * 12, me.y, 16 / v.s, C.sky, 0.25 * Math.abs(me.look));
       }
     };
@@ -770,7 +765,7 @@
   var MAX_PIXELS = 4e6;     // backing store cap per canvas (2000 x 2000)
   /** @type {Record<string, {seek: (t: number) => void, frames: () => number, state: () => string}>} */
   var registry = {};
-  /** Round 11: the card's still image, shown when the canvas cannot draw. @param {HTMLCanvasElement} canvas @param {boolean} on */
+  /** The card's still image, shown when the canvas cannot draw. @param {HTMLCanvasElement} canvas @param {boolean} on */
   function showStill(canvas, on) {
     var panel = canvas.parentElement;
     if (panel) panel.classList.toggle('is-fallback', on);
@@ -892,12 +887,12 @@
       if (!r.height) return false;
       return (Math.min(r.bottom, vh) - Math.max(r.top, 0)) / r.height >= need - 0.02;
     }
-    /** the start condition: the trigger far enough in view, or scrolled past. Round 11: a panel with its own trigger
-        (the first one, on the intro's last line) also starts once the card itself is 45% in view; on a tall phone the
-        intro can sit partly above the screen while the card is in full view, and the card stayed blank. */
+    /** the start condition: the trigger far enough in view, or scrolled past. A panel with its own trigger
+        (the first one, on the intro's last line) also starts once the card itself is 45% in view: on a tall phone the
+        intro can sit partly above the screen while the card is in full view. */
     function due() { return shown(trig, at) || (trig !== canvas && shown(canvas, 0.45)); }
     function inView() { var r = canvas.getBoundingClientRect(); return r.bottom > 0 && r.top < (window.innerHeight || 0) && r.height > 0; }
-    // round 11: a scroll check backs up the observers (an observer that never reports leaves the card blank)
+    // a scroll check backs up the observers (an observer that never reports would leave the card blank)
     var pend = 0;
     function check() {
       pend = 0;
@@ -917,7 +912,7 @@
       }, { threshold: [0, 0.43, 0.45, at - 0.02, at] });
       var watch = function () { tio.observe(trig); if (trig !== canvas) tio.observe(canvas); };
       watch();
-      // round 8, replay: once the section is out of view below (main.js), the intro waits to play again from its start;
+      // replay: once the section is out of view below (main.js), the intro waits to play again from its start;
       // the idle loop that follows it is unchanged
       var scope = canvas.closest('section');
       if (scope && !v.still) scope.addEventListener('ncc:reset', function () {
@@ -948,11 +943,11 @@
     Array.prototype.forEach.call(document.querySelectorAll('canvas[data-panel]'), function (/** @type {HTMLCanvasElement} */ c) {
       var name = c.getAttribute('data-panel') || '';
       if (!panels[name]) return;
-      // data-trigger: start this panel when that element is fully in view instead (round 6: the first panel
+      // data-trigger: start this panel when that element is fully in view instead (the first panel
       // starts as soon as the value intro's last line is on screen)
       var sel = c.getAttribute('data-trigger');
       var trig = sel ? document.querySelector(sel) : null;
-      // round 11: one panel's failure never stops the others, and leaves its own card on the still image
+      // one panel's failure never stops the others, and leaves its own card on the still image
       try { stage(c, panels[name](), trig ? { name: name, trigger: trig, triggerAt: 1 } : { name: name, activeAt: 0.45 }); }
       catch (err) { showStill(c, true); registry[name] = dead('boot: ' + (err && /** @type {Error} */ (err).message)); }
     });

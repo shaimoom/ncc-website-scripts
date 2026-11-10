@@ -1,8 +1,6 @@
-/* Newaz Clinical Consulting, hero tree: a growth simulation.
-   Pure data, no three.js.
+/* Hero tree: a growth simulation. Pure data, no three.js.
 
-   Round 5: the tree is no longer one mature shape revealed under a zoom. It is grown, in
-   time, by space colonization (Runions, Lane and Prusinkiewicz, 2007):
+   The tree is grown, in time, by space colonization (Runions, Lane and Prusinkiewicz, 2007):
 
    - The crown and the soil are envelopes that widen over the life of the tree. Points of
      open space (attractors) wake as an envelope reaches them.

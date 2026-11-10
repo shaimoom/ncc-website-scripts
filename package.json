@@ -1,0 +1,12 @@
+{
+  "name": "ncc-website-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build/minify.mjs"
+  },
+  "devDependencies": {
+    "clean-css": "^5.3.3",
+    "terser": "^5.48.0"
+  }
+}

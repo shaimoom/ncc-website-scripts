@@ -1,15 +1,11 @@
 /* ==========================================================================
-   NCC motion stylesheet for the Webflow build (newazconsulting.com)
-   Section 1: token aliases. Written in Phase 1, Monday, November 9, 2026.
+   NCC motion stylesheet for the Webflow build
+   Section 1: token aliases.
 
-   The Webflow Variables panel is the single source for the 90 design tokens below.
+   The Webflow Variables panel is the single source for the design tokens below.
    Webflow names each variable --_<collection>---<name>. These aliases give the
-   motion rules the same short names the hand-coded build used (--accent,
-   --fs-h3), so the rules port without a rename. Change a value in Webflow,
-   never here. Values are the plain-hex versions from the Vercel build.
-
-   The rest of this file (state classes, keyframes, masks, reduced motion)
-   arrives in Phase 0 of the plan.
+   motion rules short names (--accent, --fs-h3). Change a value in Webflow,
+   never here.
    ========================================================================== */
 
 :root,
@@ -140,27 +136,24 @@ body {
    resolves where it is declared, so a :root-only alias would keep 4.5rem. */
 
 /* ==========================================================================
-   Section 2: stagger hooks. Written in Phase 0, Monday, November 9, 2026.
+   Section 2: stagger hooks.
    Webflow reserves the style attribute, so the markup carries data-d (reveal
    delay step) and data-i (item index) instead of style="--d: n" / "--i: n".
-   These rules give the motion rules the same custom properties as before.
+   These rules turn them into the custom properties the motion rules use.
    ========================================================================== */
 [data-d="0"] { --d: 0; } [data-d="1"] { --d: 1; } [data-d="2"] { --d: 2; } [data-d="3"] { --d: 3; } [data-d="4"] { --d: 4; } [data-d="5"] { --d: 5; } [data-d="6"] { --d: 6; } [data-d="7"] { --d: 7; } [data-d="8"] { --d: 8; } [data-d="9"] { --d: 9; }
 [data-i="0"] { --i: 0; } [data-i="1"] { --i: 1; } [data-i="2"] { --i: 2; } [data-i="3"] { --i: 3; } [data-i="4"] { --i: 4; } [data-i="5"] { --i: 5; } [data-i="6"] { --i: 6; } [data-i="7"] { --i: 7; } [data-i="8"] { --i: 8; } [data-i="9"] { --i: 9; }
 
 /* ==========================================================================
-   Section 3: the rules Webflow classes cannot hold. Written Tuesday,
-   November 10, 2026, from site/assets/css/styles.css (the approved Vercel
-   build), rule for rule. Everything a static rule can express lives in the
-   Designer; this file holds only:
+   Section 3: the rules Webflow classes cannot hold. Everything a static rule
+   can express lives in the Designer; this file holds only:
    - base resets on tags the style API cannot reach (p, ul, ol, a, h1)
    - pseudo-elements, descendant and state selectors, attribute selectors
    - SVG paint inside the Code Embeds (strip icons, moon, signature, phase line)
    - masks and backgrounds that need an asset URL
    - keyframes, @supports and reduced-motion blocks
-   Breakpoints follow Webflow (Decision 3): 60em becomes 992px, 48em and 40em
-   become 767px, 30em becomes 479px. 64em, 23.75em and 23.43em stay exact.
-   Asset URLs are the Webflow CDN copies, uploaded Monday, November 9.
+   Breakpoints follow Webflow: 992px, 767px and 479px. 64em, 23.75em and
+   23.43em are exact. Asset URLs are the Webflow CDN copies.
    ========================================================================== */
 
 /* ---------- Base ---------- */
@@ -275,9 +268,9 @@ h2[tabindex="-1"]:focus { outline: none; }
   backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: 0 var(--hairline) 0 var(--line);
 }
-/* Round 11: no shimmer. The symbol is the plain white file; on hover (pointer devices) and keyboard focus of the
-   logo link, a Saif layer masked by the logo file fades in over the symbol only, and out on leave. Color only, so it
-   also runs under reduced motion. Native class .brand__tint holds position, inset and pointer-events. */
+/* The symbol is the plain white file; on hover (pointer devices) and keyboard focus of the logo link, a Saif layer
+   masked by the logo file fades in over the symbol only, and out on leave. Color only, so it also runs under reduced
+   motion. Native class .brand__tint holds position, inset and pointer-events. */
 .brand__tint {
   -webkit-mask: url("https://cdn.prod.website-files.com/6af29368402dd93a3f71f7f5/6af2c8e14dd2addd0446ad91_ncc-horizontal-light.svg") 0 0 / 100% 100% no-repeat;
   mask: url("https://cdn.prod.website-files.com/6af29368402dd93a3f71f7f5/6af2c8e14dd2addd0446ad91_ncc-horizontal-light.svg") 0 0 / 100% 100% no-repeat;
@@ -322,7 +315,7 @@ h2[tabindex="-1"]:focus { outline: none; }
 .header-moon .lit { fill: currentColor; }
 
 /* ---------- Loader ----------
-   Round 11: the loader's rules live inline in the Site Code embed, so it paints with the first frame and never waits
+   The loader's rules live inline in the Site Code embed, so it paints with the first frame and never waits
    for this file, and its three timing tokens live there too (loader.js may run before this file arrives). */
 .is-loading .hero .tr-li { transform: translate3d(0, 115%, 0); opacity: 0; transition: none; }
 .is-loading .hero [data-reveal] { opacity: 0; transform: translate3d(0, var(--rise), 0); transition: none; }
@@ -385,7 +378,7 @@ html:not(.js) .hero__stage,
 
 /* ---------- Solution ---------- */
 @media (min-width: 992px) { .js .journey__copy { --rise: 3rem; } }
-/* Round 11: each value card's still image (native class .journey__still) shows only when the canvas cannot draw:
+/* Each value card's still image (native class .journey__still) shows only when the canvas cannot draw:
    hidden with JS, shown again by .art-off (the boot script, when line-art.js never ran) or inline by line-art.js. */
 .js .journey__still { display: none; }
 .art-off .journey__still { display: block; }
@@ -461,7 +454,7 @@ html:not(.js) .hero__stage,
   .js .areas[data-reveal] .area { opacity: 1; animation: none; }
 }
 
-/* ---------- Core Capabilities: the symbols draw in before their titles (round 10, main.js initRowMarks) ----------
+/* ---------- Core Capabilities: the symbols draw in before their titles (main.js initRowMarks) ----------
    As its row enters, the symbol turns and grows into place in gold, then cools to its muted indigo. Static under reduced
    motion and without JS. The native .row__mark class holds the size, the mask and the resting color. */
 @media (prefers-reduced-motion: no-preference) {
@@ -519,9 +512,9 @@ html:not(.js) .hero__stage,
 .approach.is-pinned .step__verb {
   /* the soft glow as a filter on the whole word: a text-shadow is clipped by each letter's mask into boxes */
   filter: drop-shadow(0 0 0.3em var(--tint-biscuit-22));
-  /* Round 10: WebKit sizes the filter's region from what the word paints, and the split letters paint a slightly
-     different area than the settled word, so the glow and the word moved by a device pixel as the reveal ended. A box
-     larger than either (padding, given back by the margin, so nothing moves) keeps the region the same in both. */
+  /* WebKit sizes the filter's region from what the word paints, and the split letters paint a slightly different
+     area than the settled word. A box larger than either (padding, given back by the margin, so nothing moves) keeps
+     the region the same in both, so the glow does not shift as the reveal ends. */
   padding: 0.5em;
   margin: -0.5em;
 }

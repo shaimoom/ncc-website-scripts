@@ -3,8 +3,8 @@
   'use strict';
 
   /* Every "Schedule a Discovery Call" button points here. Change it once (the static hrefs in index.html are the
-     no-JS fallback and carry the same URL). Round 9: Tami's Calendly page, an external booking page, so every button
-     opens it in a new tab with rel="noopener". */
+     no-JS fallback and carry the same URL). It is an external booking page, so every button opens it in a new tab
+     with rel="noopener". */
   var SCHEDULE_URL = 'https://calendly.com/tami-newazconsulting/30min';
 
   var doc = document.documentElement;
@@ -16,10 +16,9 @@
   function clamp(v, a, b) { return Math.min(Math.max(v, a), b); }
   function easeInOut(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
-  /* Round 11 (Shai: the live site "loads very slowly"; Lighthouse mobile: main.js 1.3 s of start-up work). The heavy
-     set-ups below the fold (the clarity haze, Tami's signature plan) wait until the loader has released the page, then
-     run when the browser is idle or when their element comes within one screen of view, whichever is first. Until then
-     each shows its finished, no-JS state, and both are set up well before they can be seen. */
+  /* The heavy set-ups below the fold (the clarity haze, Tami's signature plan) wait until the loader has released the
+     page, then run when the browser is idle or when their element comes within one screen of view, whichever is first.
+     Until then each shows its finished, no-JS state, and both are set up well before they can be seen. */
   function afterLoad(fn) {
     if (doc.classList.contains('is-loading')) document.addEventListener('ncc:loaded', fn, { once: true });
     else fn();
@@ -66,15 +65,14 @@
     items.forEach(function (el) { io.observe(el); });
   }
 
-  /* ---------- Replay (round 8) ----------
-     Shai: "when I scroll all the way back to the top and I scroll back down again, I should see some of the entrance
-     animations happen again ... as if I refresh the page." Each section (and the strip and the closing) is a scope.
-     Once a scope has been seen and then lies entirely BELOW the viewport (the visitor has scrolled back up past it),
-     its entrances are reset, out of sight and without a transition, so they play again on the next way down. A scope
-     left above the viewport keeps its finished state, so scrolling back up never replays anything in reverse.
-     Nothing resets while any pixel of the scope is on screen. Scopes run their own reset on the 'ncc:reset' event;
-     the shared reveals and text reveals are reset here. Long-running loops (the hero, the panels' idle loops, the
-     How We Work scrub) are not entrances and keep their own behavior. Reduced motion: never (everything is static). */
+  /* ---------- Replay ----------
+     Each section (and the strip and the closing) is a scope. Once a scope has been seen and then lies entirely BELOW
+     the viewport (the visitor has scrolled back up past it), its entrances are reset, out of sight and without a
+     transition, so they play again on the next way down. A scope left above the viewport keeps its finished state,
+     so scrolling back up never replays anything in reverse. Nothing resets while any pixel of the scope is on screen.
+     Scopes run their own reset on the 'ncc:reset' event; the shared reveals and text reveals are reset here.
+     Long-running loops (the hero, the panels' idle loops, the How We Work scrub) are not entrances and keep their
+     own behavior. Reduced motion: never (everything is static). */
   function initReplay() {
     if (reduceMotion || !hasIO) return;
     var scopes = $$('main > section, body > footer, footer.success').filter(function (el) { return !el.matches('[data-tree], .hero'); });
@@ -117,8 +115,8 @@
   }
 
   /* Webflow sets the Space and layout variable modes on body (header-h is 4rem at 767px and below), so the stylesheet's
-     html { scroll-padding-top: var(--header-h) } sees the base 4.5rem and every anchor landed 8px low on phones. Copy the
-     value body resolves onto html. Without JS the base value stays (8px low on phones, nothing worse). */
+     html { scroll-padding-top: var(--header-h) } would see the base 4.5rem and land every anchor 8px low on phones.
+     Copy the value body resolves onto html. Without JS the base value stays (8px low on phones, nothing worse). */
   function initScrollPadding() {
     function sync() {
       var v = getComputedStyle(document.body).getPropertyValue('--header-h').trim();
@@ -141,7 +139,7 @@
   }
 
   /* ---------- Header: the section links ----------
-     Round 9. From 60em the four links sit inline. Below it, the "Menu" toggle (a disclosure button: aria-expanded,
+     From 60em the four links sit inline. Below it, the "Menu" toggle (a disclosure button: aria-expanded,
      aria-controls) opens them in a full-width panel under the bar; focus stays on the toggle and Tab moves into the panel.
      Escape closes it and returns focus to the toggle; so do a tap outside the header, choosing a link, or tabbing out
      of the panel. Smooth scrolling is CSS (html, off under reduced motion). The link for the section crossing a line
@@ -153,7 +151,7 @@
     var toggle = $('[data-nav-toggle]', nav);
     var links = $$('[data-nav-link], .site-nav__link', nav);
     var narrow = window.matchMedia('(max-width: 991px)');   /* Webflow Tablet breakpoint: the Menu toggle shows at 991px and below */
-    var tiny = window.matchMedia('(max-width: 23.43em)');   /* round 9 fix: below 375px the nav is display: none (CSS) */
+    var tiny = window.matchMedia('(max-width: 23.43em)');   /* below 375px the nav is display: none (CSS) */
     function isOpen() { return toggle.getAttribute('aria-expanded') === 'true'; }
     function setOpen(open, refocus) {
       toggle.setAttribute('aria-expanded', String(open));
@@ -166,7 +164,7 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) { e.preventDefault(); setOpen(false, true); } });
     document.addEventListener('pointerdown', function (e) { if (isOpen() && !header.contains(e.target)) setOpen(false); });
     nav.addEventListener('focusout', function (e) { if (isOpen() && e.relatedTarget && !nav.contains(e.relatedTarget)) setOpen(false); });
-    // Vera fixes (WCAG 2.4.3): choosing a link in the open panel hides the panel, and the focused link with it. Focus moves
+    // WCAG 2.4.3: choosing a link in the open panel hides the panel, and the focused link with it. Focus moves
     // to the target section's heading (tabindex="-1" in the markup), after the browser has started its scroll, so the
     // screen-reader cursor and the next Tab continue from the section, not the top of the page. The desktop inline links
     // never hide, so they keep the browser's own behavior.
@@ -205,7 +203,7 @@
   }
   function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
 
-  /* Success strip (round 8): three complete circles. When the strip is in view, each ring draws from the top, left to
+  /* Success strip: three complete circles. When the strip is in view, each ring draws from the top, left to
      right, then its mark arrives: the smile draws, the center dot pops (both CSS, on .is-playing), and the third
      waxes from a thin crescent to the full gold moon (drawn here). Replays after a reset. No JS or reduced motion:
      the finished icons (the full moon is in the markup). */
@@ -275,7 +273,7 @@
     var ctx = canvas.getContext('2d');
     var eraser = document.createElement('canvas');
     var ectx = eraser.getContext('2d');
-    // round 11: no 2D context (iOS canvas memory): the word stays clear, as without JS
+    // no 2D context (iOS canvas memory): the word stays clear, as without JS
     if (!ctx || !ectx) { root.classList.add('is-clear'); return; }
     var css = getComputedStyle(doc);
     var fog = getComputedStyle(root).getPropertyValue('--clarity-fog').trim() || css.getPropertyValue('--c-night').trim();
@@ -495,7 +493,7 @@
         last = null;
         root.classList.remove('is-scrubbing');
         if (cue) { cue.style.transition = 'opacity 700ms ease'; cue.style.opacity = '0'; }
-        // Vera fixes (polish): a visitor who has not used a pointer on the page at all (a screen reader's swipes, say)
+        // A visitor who has not used a pointer on the page at all (a screen reader's swipes, say)
         // cannot finish the erase, so after the hand's scrub the word clears on its own. Pointer visitors keep the
         // invitation to finish it themselves.
         setTimeout(function () { if (!pointerSeen && !touched) autoReveal(); }, 900);
@@ -640,10 +638,9 @@
   }
 
   /* ---------- Experience: the typewriter ----------
-     Round 9 (Shai: "I don't like the slot machine-type animation of the stats. Instead, have a cursor and type in each of
-     the stats one by one"). When the numbers are in view, a thin text cursor blinks at the first one, then types "12+" a
-     character at a time, with a hand's uneven rhythm (a beat longer before the "+", a shifted key). It moves to "45+" and
-     types it, then "6", blinks twice and fades out. Each label rises in as its number completes. The real numbers stay in
+     When the numbers are in view, a thin text cursor blinks at the first one, then types "12+" a character at a
+     time, with a hand's uneven rhythm (a beat longer before the "+", a shifted key). It moves to "45+" and types it,
+     then "6", blinks twice and fades out. Each label rises in as its number completes. The real numbers stay in
      .sr-only twins, so a screen reader always hears "12+", never the characters one by one. Replays after a reset.
      No JS or reduced motion: the plain numbers (nothing is rebuilt). */
   function initTypewriter(list) {
@@ -707,16 +704,15 @@
 
   /* ---------- Experience ----------
      The three numbers are typed in (above). Phase 1 to Phase 4: a fine line draws across and each moon waxes as the
-     line reaches it. (Round 6: the heading no longer drifts, and the therapeutic areas arrive with a CSS glint on the
-     shared reveal, so neither needs code here.) */
+     line reaches it. The therapeutic areas arrive with a CSS glint on the shared reveal, so they need no code here. */
   function initExperience() {
     var sec = $('[data-experience]');
     if (!sec) return;
     var typer = initTypewriter($('[data-stats]', sec));
 
-    /* Phase 1 to Phase 4 (round 8): the line no longer follows the scroll. It waits until it is well into view (its
-       top past 55% of the viewport), then draws across in 3.2 s, and as it reaches each moon the moon waxes and pops
-       in a brief gold glow (CSS, .is-popped), so all four pops are seen. Replays after a reset. */
+    /* Phase 1 to Phase 4: the line waits until it is well into view (its top past 55% of the viewport), then draws
+       across in 3.2 s, and as it reaches each moon the moon waxes and pops in a brief gold glow (CSS, .is-popped), so
+       all four pops are seen. Replays after a reset. */
     var phases = $('[data-phases]', sec);
     var moons = phases ? $$('[data-phase]', phases).map(function (el, i) {
       return { el: el, g: el.closest('.phases__moon'), f: parseFloat(el.getAttribute('data-phase')) || 1, at: (100 + i * 200 - 10) / 780, popped: false };
@@ -769,7 +765,7 @@
   }
 
   /* ---------- Meet Tami: she signs the page ----------
-     Round 7. When the signature is well in view, it is written stroke by stroke, in writing order: the T, "ami",
+     When the signature is well in view, it is written stroke by stroke, in writing order: the T, "ami",
      the two strokes of the N and "ewaz", then the loop, a little quicker, as one flourish, then the dot of the i.
      Within each stroke the pen slows in tight turns and runs in long sweeps (speed follows the radius of the curve,
      after the two-thirds power law of handwriting), starts gently and lifts gently, and pauses between strokes.
@@ -780,8 +776,7 @@
     var svg = $('[data-signature]');
     if (!svg || reduceMotion || !hasIO) return;
     var debug = /[?&]sig-debug\b/.test(location.search);
-    var PACE = 0.55;                       // round 8 (Shai: "speed up Tami's signature"): the whole hand at 0.55 x
-                                           // round 7's time, about 2.3 s instead of 4.1 s; the plan below stays in round 7 ms
+    var PACE = 0.55;                       // the whole hand runs at 0.55 x the plan's time (about 2.3 s); the plan below is in unscaled ms
     var LIFT = [260, 320, 150, 70, 280];   // pen lifts after each stroke, ms
     var K = 330, VMIN = 520, VMAX = 2300; // design units per second: v = K * radius^(1/3), clamped
     var LOOP = 1.55;                       // the flourish runs this much faster
@@ -866,7 +861,7 @@
   }
 
   /* ---------- Closing: the NCC lockup draws in ----------
-     Round 7: the vertical lockup, and no outline. 33 pieces draw in one at a time: the symbol's 10, nearest its
+     The vertical lockup, no outline. 33 pieces draw in one at a time: the symbol's 10, nearest its
      center first, then the 23 letters in reading order. Each piece is revealed solid, in its own color, by a brush
      that follows its outline (CSS, delayed by --t). Starts when the lockup is 60% in view. No JS, or reduced motion:
      the finished lockup. */
@@ -893,14 +888,14 @@
     });
     // the letters: line by line, left to right (already in that order in the source file)
     function arm(o, ms) {
-      // round 8: two brushes per piece, one from each end of its outline
+      // two brushes per piece, one from each end of its outline
       $$('#lk-m' + o.i + ' .lockup__brush').forEach(function (brush) { brush.style.setProperty('--t', ms + 'ms'); });
     }
     sym.forEach(function (o, k) { arm(o, k * SYM_STEP); });
     var t = (sym.length - 1) * SYM_STEP + GAP;
     letters.forEach(function (o, k) { arm(o, t + k * LETTER_STEP); });
     lk.classList.add('is-armed');
-    // Round 9: the last piece starts here and is solid about 300 ms later (two brushes meet halfway, round 8). The footer's
+    // The last piece starts here and is solid about 300 ms later (two brushes meet halfway). The footer's
     // first beam of light is timed to cross the lockup just before then (initWallpaper listens for 'ncc:lockup-draw').
     var lastStart = t + (letters.length - 1) * LETTER_STEP;
     var io = new IntersectionObserver(function (es) {
@@ -914,7 +909,7 @@
       });
     }, { threshold: 0.6 });
     io.observe(lk);
-    // Vera fixes, frame rate: a solid piece no longer needs its mask, so each drops it once its brushes have finished.
+    // A solid piece no longer needs its mask, so each drops it once its brushes have finished.
     // Every frame of the draw then composites only the pieces still drawing. A replay puts the masks back first.
     var PIECE_MS = parseFloat(getComputedStyle(lk).getPropertyValue('--dur-lockup-piece')) || 820;
     var unmaskTimers = [];
@@ -943,12 +938,11 @@
   }
 
   /* ---------- Closing: the symbol wallpaper and its beam of light ----------
-     Round 8: a beam crosses the closing from right to left and shows the wallpaper inside it (CSS). Round 9 (Shai: "Make
-     that footer shine right before the logo is fully loaded, and increase the frequency by 2"): the first beam is timed
+     A beam crosses the closing from right to left and shows the wallpaper inside it (CSS). The first beam is timed
      off the lockup, so its peak crosses the lockup's center about 150 ms after the last letter starts, just before that
-     letter is solid; then one every 5 to 7.5 s (a new random wait each time), twice as often as round 8. The beam's peak
-     reaches the middle halfway through its 2.8 s (--ease-sweep is symmetric). Nothing runs while the closing is off
-     screen or the tab is hidden. Reduced motion: never (the layer is also removed in CSS).
+     letter is solid; then one every 5 to 7.5 s (a new random wait each time). The beam's peak reaches the middle
+     halfway through its 2.8 s (--ease-sweep is symmetric). Nothing runs while the closing is off screen or the tab is
+     hidden. Reduced motion: never (the layer is also removed in CSS).
      ?wall-debug exposes window.__nccWall.sweep(). */
   function initWallpaper() {
     var el = $('[data-wallpaper]');
@@ -987,12 +981,11 @@
     if (/[?&]wall-debug\b/.test(location.search)) Object.assign(window, { __nccWall: { sweep: sweep } });
   }
 
-  /* ---------- Core Capabilities: each symbol draws in, then its title rises (round 10) ----------
-     Shai: "In How NCC Will Help, the symbols should elegantly load and animate onto the page before the headings, right
-     now it's just static while everything else animates." Each row head owns its title's reveal (data-reveal-owner, set
-     here, so without this script the title reveals on its own as before). As a row reaches the reading line, its symbol
-     turns and grows into place (CSS: .row__mark.is-in), and its title rises 4 staggers later. Rows that reach the line
-     together follow each other, 3 staggers apart. Replays with the section; nothing moves under reduced motion. */
+  /* ---------- Core Capabilities: each symbol draws in, then its title rises ----------
+     Each row head owns its title's reveal (data-reveal-owner, set here, so without this script the title reveals on
+     its own). As a row reaches the reading line, its symbol turns and grows into place (CSS: .row__mark.is-in), and its
+     title rises 4 staggers later. Rows that reach the line together follow each other, 3 staggers apart. Replays with
+     the section; nothing moves under reduced motion. */
   function initRowMarks() {
     var marks = $$('[data-row-mark], .row__mark');
     if (!marks.length || reduceMotion) return;

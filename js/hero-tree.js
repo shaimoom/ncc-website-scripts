@@ -1,5 +1,4 @@
-/* Newaz Clinical Consulting, hero: the mother tree.
-   three.js r160 (vendored in assets/vendor/three), WebGL, loaded through the import map.
+/* Hero: the mother tree. three.js r160, WebGL, loaded through the import map.
 
    A gold seed falls onto an invisible plane. Roots reach down and out, a bud breaks the
    surface and a tree grows, ages and outgrows the frame. Just before it leaves, it drops
@@ -7,14 +6,13 @@
    The whole time, pulses of gold and sky blue run from the root tips through the trunk
    into the leaves.
 
-   Round 5: the tree truly grows. There is no zoom. The layout scale is fixed for the whole
-   life; the tree gets bigger only by extension and branching. tree-gen.js simulates the
-   growth once (space colonization in a widening crown, timed walks for the roots) and
-   gives every node a birth time and its thickness at eight moments. Here, two clocks (tree
-   and roots) slide each growth front along its branch, thicken the old wood in place,
-   open leaves at new tips, drop them inside the crown and shed shaded twigs. Growth, aging,
-   sway, the pulses and the dissolve all run on the GPU from a handful of uniforms, so a
-   frame costs almost nothing on the CPU. */
+   There is no zoom. The layout scale is fixed for the whole life; the tree gets bigger only
+   by extension and branching. tree-gen.js simulates the growth once (space colonization in a
+   widening crown, timed walks for the roots) and gives every node a birth time and its
+   thickness at eight moments. Here, two clocks (tree and roots) slide each growth front along
+   its branch, thicken the old wood in place, open leaves at new tips, drop them inside the
+   crown and shed shaded twigs. Growth, aging, sway, the pulses and the dissolve all run on
+   the GPU from a handful of uniforms, so a frame costs almost nothing on the CPU. */
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -43,11 +41,9 @@ import { generateTree, RAD_T } from './tree-gen.js';
  */
 
 /* Pace. The growth timeline is authored in BASE seconds (34 s, phaseAt below); warp() maps real
-   seconds since the landing onto it.
-   - The opening is round 4's, unchanged: a steep burst that settles, so a sapling is up about
-     1 s after the landing and a young branching tree at 1.6 s (about 2.5 s after load).
-   - Round 5: after the opening, growth keeps the opening's own speed at that moment instead of
-     settling further, easing only a touch toward the landing. The cycle is 8 s, was 17 s. */
+   seconds since the landing onto it: a steep opening burst that settles (a sapling is up about
+   1 s after the landing, a young branching tree at 1.6 s), then growth at the opening's own
+   speed at the handover, easing only a touch so BASE lands on CYCLE. */
 const CYCLE = 8;           // real seconds from one landing to the next
 const BASE = 34;           // authored timeline length
 const FALL = 1.7;          // a seed's fall from the old tree
@@ -57,7 +53,7 @@ const STILL_TAU = 28;      // the mature frame shown under reduced motion (autho
 const FLOW_SPEED = 0.24;   // pulse speed, world units per second
 const WARP_B = 13;         // extra authored seconds spent in the opening burst
 const WARP_T = 1.3;        // how fast the burst settles, real seconds
-const WARP_A = (BASE - WARP_B * (1 - Math.exp(-17 / WARP_T))) / 17;  // round 4's opening, kept exactly
+const WARP_A = (BASE - WARP_B * (1 - Math.exp(-17 / WARP_T))) / 17;  // the opening burst's shape
 const OPEN_END = 1.6;      // real seconds after the landing where the opening hands over
 /** The opening burst. @param {number} t */
 const opening = (t) => WARP_A * t + WARP_B * (1 - Math.exp(-t / WARP_T));
@@ -530,17 +526,16 @@ function fail(/** @type {unknown} */ err) {
   heroReady();
 }
 
-/* Round 9, the loader (loader.js): it waits for this signal (the first frame is drawn, or the hero fell back to its
-   still frame), and while html.is-loading is set the tree holds at its first frame. 'ncc:loaded' starts the clock,
-   so the first seed falls after the loader has lifted, never behind it. */
+/* The loader (loader.js) waits for this signal (the first frame is drawn, or the hero fell back to its
+   still frame), and while html.is-loading is set the tree holds at its first frame. 'ncc:loaded' starts
+   the clock, so the first seed falls after the loader has lifted, never behind it. */
 function heroReady() {
   Object.assign(window, { __nccHeroReady: true });
   document.dispatchEvent(new CustomEvent('ncc:hero-ready'));
 }
 
-/* Round 11 (Lighthouse mobile: hero-tree.js was one 0.8 s task at start-up): boot hands the main thread back twice,
-   after the renderer is set up and after the first tree is grown, so the loader keeps drawing and the browser can
-   paint in between. Nothing is shown before the first frame, as before. */
+/* Boot hands the main thread back twice, after the renderer is set up and after the first tree is grown,
+   so the loader keeps drawing and the browser can paint in between. Nothing is shown before the first frame. */
 const yieldTask = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 async function boot() {
@@ -825,7 +820,7 @@ async function boot() {
   let last = 0;
   let inView = true;
   let paused = false;
-  let held = root.classList.contains('is-loading');   // round 9: the loader is up
+  let held = root.classList.contains('is-loading');   // the loader is up
   const frameTimes = [];
   let lastAdapt = 0;
   let frames = 0;
@@ -916,7 +911,7 @@ async function boot() {
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); running = false; fail('context lost'); });
 
   if (debug) {
-    /** QA hook, only with ?tree-debug in the URL. */
+    /** Test hook, only with ?tree-debug in the URL. */
     Object.assign(window, {
       __nccTree: {
         /** @param {number} t absolute clock, seconds */
@@ -930,8 +925,8 @@ async function boot() {
   }
 }
 
-/* Vera fixes: probe WebGL once, before any renderer exists, and share the answer with approach-plant.js
-   (window.__nccWebGL). Without it three.js logs "A WebGL context could not be created" for each renderer it tries.
+/* Probe WebGL once, before any renderer exists, and share the answer with approach-plant.js (window.__nccWebGL).
+   Without it three.js logs "A WebGL context could not be created" for each renderer it tries.
    The probe context is released at once, so it never counts against the browser's context limit. */
 function hasWebGL() {
   const g = /** @type {{__nccWebGL?: boolean}} */ (/** @type {unknown} */ (window));

@@ -1,5 +1,4 @@
-/* Newaz Clinical Consulting, shared text reveal. Round 5.
-   One system for every heading and key line on the page.
+/* Shared text reveal: one system for every heading and key line on the page.
 
    Markup: [data-split] splits into lines (default); [data-split="chars"] splits into letters, for single display words.
    Optional style="--d: n" delays the start by n steps of --stagger, the same delay scale as [data-reveal].
@@ -16,21 +15,20 @@
    - Splits wait for the fonts, and re-split when the width changes or late fonts land.
    - A section that drives its own choreography sets data-reveal-owner; its text is then revealed by that owner
      through window.NCCText.reveal(el) / .hide(el) instead of on entering the viewport.
-   - Round 8, replay: window.NCCText.reset(scope) hides every split element in a scope again (main.js calls it once the
+   - Replay: window.NCCText.reset(scope) hides every split element in a scope again (main.js calls it once the
      scope is out of view below), so its lines rise again on the next entry. Owner-driven text is left alone.
-   - Vera fixes, WCAG 1.4.12 text spacing: the split lines are nowrap masks, so they cannot reflow when a visitor raises
+   - WCAG 1.4.12 text spacing: the split lines are nowrap masks, so they cannot reflow when a visitor raises
      letter, word or line spacing. Once an element's reveal has finished (its last line's transform transitionend, with a
      timer as the backstop), its ORIGINAL markup is put back: plain flowing text, no masks, no twin. Text spacing, a
-     narrower window, copy and paste, and browser translation then all behave like normal HTML, and the letter-split
-     verbs keep their kerning (PREPARE no longer reads "PREP ARE"). Before anything animates it again, it is split again
-     from the laid-out text: on replay (reset), on hide(), and on window.NCCText.split(el), which a choreography owner
-     calls before it moves a step out (approach-plant.js). The look of the reveal does not change.
+     narrower window, copy and paste, and browser translation then all behave like normal HTML. Before anything
+     animates it again, it is split again from the laid-out text: on replay (reset), on hide(), and on
+     window.NCCText.split(el), which a choreography owner calls before it moves a step out (approach-plant.js).
    - Before a reveal starts, lines measured under other spacing or fonts (wider than their box) are re-measured.
-   - Polish 14 (Vera's re-inspection): a choreography owner arms the settle backstop through window.NCCText.settle(el)
-     whenever a step is on stage or the section comes back into view, and every backstop also settles any other revealed
-     element that has landed but is still split. transitionend alone missed a step that was already at rest.
-   - Round 10: letter-split words are set at the flowing text's own letter positions (matchKerning), so the swap back to
-     flowing text moves nothing. Line-split text keeps whole words in one run and already lands within 0.2px. */
+   - A choreography owner arms the settle backstop through window.NCCText.settle(el) whenever a step is on stage or
+     the section comes back into view, and every backstop also settles any other revealed element that has landed but
+     is still split (transitionend alone misses a step that is already at rest).
+   - Letter-split words are set at the flowing text's own letter positions (matchKerning), so the swap back to
+     flowing text moves nothing. Line-split text keeps whole words in one run and lands within 0.2px. */
 // @ts-check
 (function () {
   'use strict';
@@ -60,7 +58,7 @@
     return;
   }
 
-  /** flat: the reveal has finished and the original markup is back (Vera fixes); timer: the settle backstop
+  /** flat: the reveal has finished and the original markup is back; timer: the settle backstop
       @typedef {{el: HTMLElement, mode: string, html: string, width: number, size: string, vis: HTMLElement | null, flat: boolean, timer: number}} Item */
   /** @type {Item[]} */
   var items = [];
@@ -105,7 +103,7 @@
     return node;
   }
 
-  /** Round 10: where the browser sets each letter of the element's flowing text (left edge and top, CSS px from the
+  /** Where the browser sets each letter of the element's flowing text (left edge and top, CSS px from the
       element's box), whitespace skipped. Kerning, letter-spacing and subpixel placement are all in these numbers.
       Empty when the element is not laid out. @param {HTMLElement} el @returns {{x: number, y: number}[]} */
   function glyphs(el) {
@@ -129,11 +127,10 @@
     return out;
   }
 
-  /** Round 10, Shai: "the letters in the heading shift a bit after landing its animation". Each letter rises in its own
-      mask, and a kerning pair cannot span two masks, so the split word was set wider than the flowing word (PREPARE's A
-      sat 6.8px right of where it lands once the text settles, EXECUTE's T 4.2px). Each mask now takes the difference as
-      a margin, measured against the flowing text, so the split letters stand exactly where the settled word sets them,
-      kerning included. A letter that starts a new line is left alone.
+  /** Each letter rises in its own mask, and a kerning pair cannot span two masks, so a split word would be set wider
+      than the flowing word. Each mask takes the difference as a margin, measured against the flowing text, so the split
+      letters stand exactly where the settled word sets them, kerning included. A letter that starts a new line is left
+      alone.
       @param {HTMLElement} el @param {{x: number, y: number}[]} flow @param {HTMLElement[]} masks */
   function matchKerning(el, flow, masks) {
     if (flow.length !== masks.length || masks.length < 2) return;
@@ -193,9 +190,9 @@
     }
 
     // lines: group the words by where the browser set them.
-    // Round 9: by each word's vertical CENTER, and a new line only when it moves by half a line or more. Grouping by top
-    // edge (3px) split one line in two whenever two faces on it had different ascents: with the italic still loading,
-    // its fallback sat a few px higher, so "How We Work Together" became "How We Work" over "Together" (Shai's note).
+    // By each word's vertical CENTER, and a new line only when it moves by half a line or more. Grouping by top
+    // edge would split one line in two whenever two faces on it have different ascents (a fallback face still loading
+    // sits a few px higher).
     var cs = getComputedStyle(el);
     var half = (parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2 || 16) / 2;
     /** @type {HTMLElement[][]} */
@@ -225,7 +222,7 @@
     it.vis = out;
   }
 
-  /* ---------- Vera fixes: settle to flowing text, split again before the next animation ---------- */
+  /* ---------- Settle to flowing text, split again before the next animation ---------- */
   /** @param {Element} el @returns {Item | null} */
   function find(el) {
     for (var i = 0; i < items.length; i++) if (items[i].el === el) return items[i];
@@ -295,7 +292,7 @@
       @param {Item} it */
   function flatten(it) {
     clearTimeout(it.timer);
-    // Round 9 overlap fix: never while a row is moving. A step told to leave reads as at rest on its first frame, and a
+    // Never while a row is moving. A step told to leave reads as at rest on its first frame, and a
     // settle timer from its entrance landing there would put its flat text back on stage.
     if (it.flat || !it.vis || !landed(it) || moving(it)) return;
     var want = it.mode === 'chars' ? null : rows(it).map(function (row) { return (row.textContent || '').replace(/\s+/g, ''); }).join('|');
@@ -322,7 +319,7 @@
     var sec = function (/** @type {string} */ v) { return Math.max.apply(null, v.split(',').map(function (x) { return (parseFloat(x) || 0) * (/ms/.test(x) ? 1 : 1000); })); };
     it.timer = window.setTimeout(function () { flatten(it); sweep(); }, sec(cs.transitionDelay) + sec(cs.transitionDuration) + 150);
   }
-  /** Polish 14: a backstop also settles every other revealed element that has landed but is still split. A row whose
+  /** A backstop also settles every other revealed element that has landed but is still split. A row whose
       transition was cancelled (is-resetting turns transitions off while a step returns to rest off screen) never fires
       transitionend, so without this it could stay split. Landed and still only: a mid-rise element keeps its own timer,
       and a step that has just been told to leave (its first frame still reads as at rest) keeps its exit. */
@@ -410,9 +407,9 @@
     var vh = window.innerHeight;
     items.forEach(function (it) {
       if (it.flat) return; // settled: plain text reflows on its own
-      // Round 7: the type is fluid, so a block that has reached its max-width keeps its width while its font keeps
-      // growing with the viewport. Re-split when either changes; a width-only check left stale lines that ran past
-      // their masks (the closing paragraph Shai saw cut off on the right).
+      // The type is fluid, so a block that has reached its max-width keeps its width while its font keeps
+      // growing with the viewport. Re-split when either changes; a width-only check leaves stale lines that run past
+      // their masks.
       var w = it.el.clientWidth;
       var size = getComputedStyle(it.el).fontSize;
       if (it.vis && w === it.width && size === it.size) return;
