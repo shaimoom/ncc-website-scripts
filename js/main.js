@@ -52,7 +52,7 @@
      How We Work scrub) are not entrances and keep their own behavior. Reduced motion: never (everything is static). */
   function initReplay() {
     if (reduceMotion || !hasIO) return;
-    var scopes = $$('main > section, footer.success').filter(function (el) { return !el.matches('.hero'); });
+    var scopes = $$('main > section, body > footer, footer.success').filter(function (el) { return !el.matches('[data-tree], .hero'); });
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         var el = e.target;
@@ -100,8 +100,8 @@
     if (!nav) return;
     var header = $('[data-header]');
     var toggle = $('[data-nav-toggle]', nav);
-    var links = $$('.site-nav__link', nav);
-    var narrow = window.matchMedia('(max-width: 59.99em)');
+    var links = $$('[data-nav-link], .site-nav__link', nav);
+    var narrow = window.matchMedia('(max-width: 991px)');   /* Webflow Tablet breakpoint: the Menu toggle shows at 991px and below */
     var tiny = window.matchMedia('(max-width: 23.43em)');   /* round 9 fix: below 375px the nav is display: none (CSS) */
     function isOpen() { return toggle.getAttribute('aria-expanded') === 'true'; }
     function setOpen(open, refocus) {
@@ -357,7 +357,7 @@
        A faint ring (the cue) rides the hand, so the gesture reads as an invitation. */
     var handDone = false;
     var simulating = false;
-    var cue = $('.clarity__cue-dot', root);
+    var cue = $('[data-clarity-cue-dot], .clarity__cue-dot', root);
     var coarse = window.matchMedia('(pointer: coarse)').matches;
     function seeded(a) { return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
     function sineInOut(t) { return 0.5 - 0.5 * Math.cos(Math.PI * t); }
@@ -365,7 +365,7 @@
       if (dissolving || done || touched || handDone) return;
       handDone = true;
       simulating = true;
-      var word = $('.clarity__word', root);
+      var word = $('[data-clarity-word], .clarity__word', root);
       var wr = word.getBoundingClientRect(), rr = root.getBoundingClientRect();
       var x0 = wr.left - rr.left, y0 = wr.top - rr.top, ww = wr.width, wh = wr.height;
       var radius = coarse ? 44 : 36;
@@ -594,7 +594,7 @@
      No JS or reduced motion: the plain numbers (nothing is rebuilt). */
   function initTypewriter(list) {
     if (!list || reduceMotion || !hasIO) return null;
-    var items = $$('.stat', list).map(function (li) {
+    var items = $$('[data-stat], .stat', list).map(function (li) {
       var num = $('[data-type]', li);
       var text = num.textContent.trim();
       num.textContent = '';

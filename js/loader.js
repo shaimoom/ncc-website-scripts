@@ -108,7 +108,10 @@
       // no WebGL: the hero shows a still frame; wait for that image (the same one the CSS picks)
       var img = new Image();
       img.onload = img.onerror = heroDone;
-      img.src = 'assets/img/' + (window.matchMedia('(max-width: 59.99em)').matches ? 'hero-tree-still-tall.png' : 'hero-tree-still-wide.png');
+      // Webflow: the loader carries the still frames' asset URLs (data-still-tall, data-still-wide). The relative path is
+      // the Vercel build's. 991px is Webflow's Tablet breakpoint, where the hero CSS swaps the frames.
+      var tall = window.matchMedia('(max-width: 991px)').matches;
+      img.src = loader.getAttribute(tall ? 'data-still-tall' : 'data-still-wide') || ('assets/img/' + (tall ? 'hero-tree-still-tall.png' : 'hero-tree-still-wide.png'));
     }
   }
   // Deferred scripts run while readyState is already 'interactive' but before DOMContentLoaded, so wait for the event.

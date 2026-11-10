@@ -287,12 +287,12 @@ if (section && !root.classList.contains('no-gl') && hasWebGL()) {
 
 /** @param {HTMLElement} sec */
 function boot(sec) {
-  const stageEl = /** @type {HTMLElement} */ (sec.querySelector('.approach__stage'));
+  const stageEl = /** @type {HTMLElement} */ (sec.querySelector('[data-approach-stage], .approach__stage'));
   const list = /** @type {HTMLElement} */ (sec.querySelector('[data-steps]'));
   const steps = /** @type {HTMLElement[]} */ (Array.from(sec.querySelectorAll('[data-step]')));
-  const ticks = /** @type {HTMLElement[]} */ (Array.from(sec.querySelectorAll('.approach__ticks li')));
-  const track = /** @type {HTMLElement} */ (sec.querySelector('.approach__track'));
-  const titleEl = /** @type {HTMLElement} */ (sec.querySelector('.approach__title'));
+  const ticks = /** @type {HTMLElement[]} */ (Array.from(sec.querySelectorAll('[data-approach-ticks] li, .approach__ticks li')));
+  const track = /** @type {HTMLElement} */ (sec.querySelector('[data-approach-track], .approach__track'));
+  const titleEl = /** @type {HTMLElement} */ (sec.querySelector('[data-approach-title], .approach__title'));
   /** @type {{reveal: (el: Element) => void, hide: (el: Element) => void, split?: (el: Element) => boolean} | undefined} */
   const T = /** @type {any} */ (window).NCCText;
   const still = reduce;
@@ -456,7 +456,7 @@ function boot(sec) {
     } else if (!small()) {
       // between the step text and the container's right edge (plus a little of the gutter)
       const lr = list.getBoundingClientRect();
-      const gridEl = /** @type {HTMLElement} */ (sec.querySelector('.approach__grid'));
+      const gridEl = /** @type {HTMLElement} */ (sec.querySelector('[data-approach-grid], .approach__grid'));
       const gr = gridEl.getBoundingClientRect();
       const pad = parseFloat(getComputedStyle(gridEl).paddingRight) || 0;
       const left = Math.min(lr.left + lr.width * 0.72, gr.left + gr.width * 0.5) - rect.left;
@@ -506,7 +506,7 @@ function boot(sec) {
     // it again before is-past moves its lines out, or there would be nothing to animate.
     if (T && T.split) steps.forEach((s) => s.querySelectorAll('[data-split]').forEach((el) => { T.split && T.split(el); }));
     steps.forEach((s, i) => {
-      const verb = s.querySelector('.step__verb'), rest = s.querySelector('.step__rest');
+      const verb = s.querySelector('[data-step-verb], .step__verb'), rest = s.querySelector('[data-step-rest], .step__rest');
       s.classList.toggle('is-active', i === active);
       s.classList.toggle('is-past', i < active);
       if (i <= active) { if (verb && T) T.reveal(verb); if (rest && T) T.reveal(rest); }

@@ -79,8 +79,8 @@ function unwarp(a) { let lo = 0, hi = CYCLE * 2; for (let i = 0; i < 40; i++) { 
 const FIRST_START = 0.12 + FALL_FIRST; // the first landing, real seconds after boot
 const root = document.documentElement;
 const hero = /** @type {HTMLElement | null} */ (document.querySelector('[data-tree]'));
-const stage = hero ? /** @type {HTMLElement | null} */ (hero.querySelector('.hero__stage')) : null;
-const copy = hero ? /** @type {HTMLElement | null} */ (hero.querySelector('.hero__copy')) : null;
+const stage = hero ? /** @type {HTMLElement | null} */ (hero.querySelector('[data-hero-stage], .hero__stage')) : null;
+const copy = hero ? /** @type {HTMLElement | null} */ (hero.querySelector('[data-hero-copy], .hero__copy')) : null;
 const header = /** @type {HTMLElement | null} */ (document.querySelector('[data-header]'));
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const debug = /[?&]tree-debug\b/.test(location.search);

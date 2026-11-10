@@ -114,7 +114,8 @@
     el.appendChild(sr);
     el.appendChild(vis);
     var words = wrapWords(vis);
-    var delay = parseFloat(getComputedStyle(el).getPropertyValue('--d')) || 0;
+    // Webflow sets the delay as data-d (the style attribute is reserved there); ncc-motion.css maps it to --d.
+    var delay = parseFloat(getComputedStyle(el).getPropertyValue('--d')) || parseFloat(el.getAttribute('data-d') || '') || 0;
     el.style.setProperty('--tr-d', String(delay));
 
     if (it.mode === 'chars') {
