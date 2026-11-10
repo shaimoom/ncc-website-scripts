@@ -78,6 +78,32 @@
     requestAnimationFrame(function () { requestAnimationFrame(function () { scope.classList.remove('is-resetting'); }); });
   }
 
+  /* ---------- Webflow: in-page links scroll the way the Vercel build does ----------
+     webflow.js (its "scroll" module) catches every same-page link click on document, cancels it, and runs its own
+     scroll: it stops at the header's height (ignoring scroll-padding-top and #approach's scroll-margin-top) and steps
+     window.scroll() each frame, which fights html's CSS smooth scroll. Stopping the click before it reaches document
+     leaves the browser's own anchor jump: CSS smooth scroll (off under reduced motion), the scroll padding below, the
+     hash in the address bar, and the nav's own handlers on the link (initNav), which still run. */
+  function initAnchors() {
+    $$('a[href^="#"]').forEach(function (a) {
+      if (a.getAttribute('href').length < 2) return;
+      a.addEventListener('click', function (e) { e.stopPropagation(); });
+    });
+  }
+
+  /* Webflow sets the Space and layout variable modes on body (header-h is 4rem at 767px and below), so the stylesheet's
+     html { scroll-padding-top: var(--header-h) } sees the base 4.5rem and every anchor landed 8px low on phones. Copy the
+     value body resolves onto html. Without JS the base value stays (8px low on phones, nothing worse). */
+  function initScrollPadding() {
+    function sync() {
+      var v = getComputedStyle(document.body).getPropertyValue('--header-h').trim();
+      if (v) doc.style.scrollPaddingTop = v; else doc.style.removeProperty('scroll-padding-top');
+    }
+    var mq = window.matchMedia('(max-width: 767px)');
+    if (mq.addEventListener) mq.addEventListener('change', sync); else if (mq.addListener) mq.addListener(sync);
+    sync();
+  }
+
   /* ---------- Header: scrolled state ---------- */
   function initHeader() {
     var header = $('[data-header]');
@@ -955,6 +981,8 @@
 
   function start() {
     initSchedule();
+    initAnchors();
+    initScrollPadding();
     initHeader();
     initNav();
     initReveal();
